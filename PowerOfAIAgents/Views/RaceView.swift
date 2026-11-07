@@ -348,7 +348,7 @@ struct RacePanel: View {
                 Spacer()
                 metric(prefs.text("média", "average"), run.decisions == 0 ? "—" : run.averageLatency.milliseconds)
                 Spacer()
-                metric(prefs.text("erros", "errors"), "\(run.falseAlarms)")
+                metric(prefs.text("erros", "errors"), "\(run.errors)")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

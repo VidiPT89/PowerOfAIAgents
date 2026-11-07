@@ -48,6 +48,7 @@ struct SplashView: View {
     @EnvironmentObject private var prefs: Preferences
     @Environment(\.colorScheme) private var scheme
     let finish: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
 
     var body: some View {
@@ -84,7 +85,7 @@ struct SplashView: View {
         .contentShape(Rectangle())
         .onTapGesture(perform: finish)
         .task {
-            withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { appeared = true }
+            withAnimation(reduceMotion ? nil : .spring(response: 0.8, dampingFraction: 0.7)) { appeared = true }
             guard (try? await Task.sleep(for: .seconds(3.2))) != nil else { return }
             finish()
         }

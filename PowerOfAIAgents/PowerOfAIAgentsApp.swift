@@ -25,6 +25,7 @@ struct PowerOfAIAgentsApp: App {
 struct RootView: View {
     @EnvironmentObject private var prefs: Preferences
     @State private var splashDone = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
@@ -34,7 +35,7 @@ struct RootView: View {
                     .onAppear { splashDone = true }
                     .transition(.opacity)
             } else {
-                SplashView { withAnimation(.easeInOut(duration: 0.5)) { splashDone = true } }
+                SplashView { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.5)) { splashDone = true } }
                     .transition(.opacity)
             }
         }

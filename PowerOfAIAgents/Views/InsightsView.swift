@@ -114,6 +114,8 @@ struct InsightsView: View {
         HStack {
             Text(prefs.text("Enviado para a nuvem", "Sent to the cloud")).font(.caption)
             Slider(value: $escalation, in: 0...1)
+                .accessibilityLabel(prefs.text("Enviado para a nuvem", "Sent to the cloud"))
+                .accessibilityValue("\(Int(escalation * 100))%")
             Text("\(Int(escalation * 100))%").font(.system(.subheadline, design: .monospaced, weight: .semibold)).frame(width: 48, alignment: .trailing)
         }
         HStack(spacing: 12) {

@@ -39,6 +39,8 @@ final class EngineTests: XCTestCase {
             XCTAssertEqual(run.verdicts.count, run.decisions)
             XCTAssertEqual(run.verdicts.values.filter { $0 == .hit }.count, run.finds)
             XCTAssertEqual(run.verdicts.values.filter { $0 == .falseAlarm }.count, run.falseAlarms)
+            XCTAssertEqual(run.verdicts.values.filter { $0 == .miss }.count, run.misses)
+            XCTAssertEqual(run.errors, run.verdicts.values.filter { $0 == .falseAlarm || $0 == .miss }.count)
         }
     }
 
@@ -417,6 +419,22 @@ final class EngineTests: XCTestCase {
             while !stepped.isFinished { stepped.advance(to: stepped.time + 0.1) }
             XCTAssertEqual(direct.builtAt, stepped.builtAt)
             XCTAssertEqual(direct.completionTime, stepped.completionTime)
+        }
+    }
+
+    func testZeroAccuracyCountsBothKindsOfError() {
+        let tunings = AgentTuning.defaults.map { tuning in
+            var result = tuning
+            result.accuracy = 0
+            return result
+        }
+        var engine = RaceEngine(profiles: AgentProfile.lineup(tuned: tunings), relevance: [true, false], duration: 20)
+        engine.advance(to: 20)
+        for run in engine.runs {
+            XCTAssertGreaterThan(run.misses, 0)
+            XCTAssertGreaterThan(run.falseAlarms, 0)
+            XCTAssertEqual(run.errors, run.decisions)
+            XCTAssertEqual(run.finds, 0)
         }
     }
 

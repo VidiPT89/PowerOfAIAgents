@@ -173,6 +173,8 @@ struct AgentRun: Sendable {
     var verdicts: [Int: Verdict] = [:]
     var finds = 0
     var falseAlarms = 0
+    var misses = 0
+    var errors: Int { falseAlarms + misses }
     var decisions = 0
     var latencySum = 0.0
     var averageLatency: Double { decisions == 0 ? 0 : latencySum / Double(decisions) }
@@ -246,13 +248,14 @@ struct RaceEngine: Sendable {
         runs[i].latencySum += latency.total
         if verdict == .hit { runs[i].finds += 1 }
         if verdict == .falseAlarm { runs[i].falseAlarms += 1 }
+        if verdict == .miss { runs[i].misses += 1 }
     }
 
     /// Agents ordered by correct finds, then by fewer mistakes.
     var ranking: [Int] {
         runs.indices.sorted { a, b in
             if runs[a].finds != runs[b].finds { return runs[a].finds > runs[b].finds }
-            return runs[a].falseAlarms < runs[b].falseAlarms
+            return runs[a].errors < runs[b].errors
         }
     }
 }

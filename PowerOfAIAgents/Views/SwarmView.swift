@@ -99,6 +99,8 @@ struct SwarmView: View {
             HStack(spacing: 12) {
                 Image(systemName: "person.3.fill").foregroundStyle(Brand.accent(scheme))
                 Slider(value: Binding(get: { Double(model.agentCount) }, set: { model.agentCount = Int($0.rounded()) }), in: 1...32, step: 1)
+                    .accessibilityLabel(prefs.text("Número de agentes", "Number of agents"))
+                    .accessibilityValue("\(model.agentCount)")
                 Text("\(model.agentCount) \(prefs.text(model.agentCount == 1 ? "agente" : "agentes", model.agentCount == 1 ? "agent" : "agents"))")
                     .font(.system(.subheadline, design: .monospaced, weight: .semibold))
                     .frame(minWidth: 96, alignment: .trailing)
