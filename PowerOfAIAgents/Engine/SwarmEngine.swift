@@ -90,7 +90,6 @@ struct SwarmAgent: Sendable {
     var travelStart = 0.0
     var travelEnd = 0.0
     var buildEnd = 0.0
-    var built = 0
 
     func location(at time: Double) -> CGPoint {
         guard layer != nil, time < travelEnd, travelEnd > travelStart else { return position }
@@ -153,7 +152,6 @@ struct SwarmEngine: Sendable {
             if let i = next, let layer = agents[i].layer {
                 let finishedAt = agents[i].buildEnd
                 builtAt[layer] = finishedAt
-                agents[i].built += 1
                 agents[i].layer = nil
                 assign(agent: i, at: finishedAt)
                 progressed = true

@@ -8,20 +8,21 @@ final class FrameLoop {
 
     private var task: Task<Void, Never>?
 
-    static func step(from last: Date, to now: Date) -> Double {
-        min(max(now.timeIntervalSince(last), 0), maxStep)
+    static func step(elapsed: Duration) -> Double {
+        min(max(elapsed.milliseconds / 1000, 0), maxStep)
     }
 
     /// Calls `tick` with the seconds since the previous frame until it returns false or `stop()` is called.
     func start(_ tick: @escaping @MainActor (Double) -> Bool) {
         stop()
         task = Task { [weak self] in
-            var last = Date()
+            let clock = ContinuousClock()
+            var last = clock.now
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(16))
                 guard !Task.isCancelled else { return }
-                let now = Date()
-                let keepGoing = tick(Self.step(from: last, to: now))
+                let now = clock.now
+                let keepGoing = tick(Self.step(elapsed: last.duration(to: now)))
                 last = now
                 if !keepGoing {
                     self?.task = nil

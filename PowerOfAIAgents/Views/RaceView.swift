@@ -443,7 +443,7 @@ struct PageCanvas: View {
 
             // Cloud agents: the request travels to the data centre and back.
             if case let .deciding(start, end, latency) = run.phase, profile.kind == .cloud, end > start {
-                drawNetwork(context: &context, canvas: canvas, from: position, progress: (time - start) / (end - start), latency: latency, color: color)
+                drawNetwork(context: &context, canvas: canvas, from: position, progress: (time - start) / (end - start), latency: latency)
             }
 
             var walking = false
@@ -477,7 +477,7 @@ struct PageCanvas: View {
         return CGPoint(x: from.x + (to.x - from.x) * eased, y: from.y + (to.y - from.y) * eased)
     }
 
-    private func drawNetwork(context: inout GraphicsContext, canvas: CGSize, from: CGPoint, progress: Double, latency: LatencyBreakdown, color: Color) {
+    private func drawNetwork(context: inout GraphicsContext, canvas: CGSize, from: CGPoint, progress: Double, latency: LatencyBreakdown) {
         let server = CGPoint(x: canvas.width - 22, y: 20)
         var line = Path()
         line.move(to: from)

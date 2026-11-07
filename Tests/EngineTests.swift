@@ -59,7 +59,8 @@ final class EngineTests: XCTestCase {
         var engine = SwarmEngine(agentCount: 8)
         engine.advance(to: .greatestFiniteMagnitude)
         XCTAssertTrue(engine.isFinished)
-        XCTAssertEqual(engine.agents.map(\.built).reduce(0, +), engine.layers.count)
+        XCTAssertEqual(engine.builtAt.compactMap { $0 }.count, engine.layers.count)
+        XCTAssertTrue(engine.agents.allSatisfy { $0.layer == nil })
     }
 
     func testMoreAgentsFinishFaster() {
@@ -171,10 +172,9 @@ final class EngineTests: XCTestCase {
 
     @MainActor
     func testFrameStepIsCappedAfterASuspension() {
-        let last = Date(timeIntervalSince1970: 1_000)
-        XCTAssertEqual(FrameLoop.step(from: last, to: last.addingTimeInterval(0.016)), 0.016, accuracy: 1e-6)
-        XCTAssertEqual(FrameLoop.step(from: last, to: last.addingTimeInterval(300)), FrameLoop.maxStep)
-        XCTAssertEqual(FrameLoop.step(from: last, to: last.addingTimeInterval(-5)), 0)
+        XCTAssertEqual(FrameLoop.step(elapsed: .milliseconds(16)), 0.016, accuracy: 1e-9)
+        XCTAssertEqual(FrameLoop.step(elapsed: .seconds(300)), FrameLoop.maxStep)
+        XCTAssertEqual(FrameLoop.step(elapsed: .seconds(-5)), 0)
     }
 
     @MainActor
@@ -407,6 +407,17 @@ final class EngineTests: XCTestCase {
         XCTAssertFalse(model.isRunning)
         XCTAssertFalse(generated)
         XCTAssertFalse(model.generativeFailed)
+    }
+
+    func testSwarmLayerCompletionIsIndependentOfFrameSteps() {
+        for count in [1, 12, 32] {
+            var direct = SwarmEngine(agentCount: count)
+            direct.advance(to: 1000)
+            var stepped = SwarmEngine(agentCount: count)
+            while !stepped.isFinished { stepped.advance(to: stepped.time + 0.1) }
+            XCTAssertEqual(direct.builtAt, stepped.builtAt)
+            XCTAssertEqual(direct.completionTime, stepped.completionTime)
+        }
     }
 
 }

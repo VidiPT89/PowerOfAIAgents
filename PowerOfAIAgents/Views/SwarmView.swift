@@ -160,6 +160,7 @@ struct SwarmCanvas: View {
     var body: some View {
         Canvas { context, size in
             let time = engine.time
+            let finished = engine.isFinished
             let dark = scheme == .dark
             context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: dark ? 0x0E0E16 : 0xEDE8DF)))
             drawGrid(&context, size: size, dark: dark)
@@ -170,7 +171,7 @@ struct SwarmCanvas: View {
 
             for layer in engine.layers {
                 guard let builtAt = engine.builtAt[layer.id] else { continue }
-                let appear = min(1, (time - builtAt) / 0.25)
+                let appear = finished ? 1 : min(1, (time - builtAt) / 0.25)
                 draw(layer, in: frame(layer.rect), context: &context, opacity: max(0.2, appear), dark: dark)
             }
 
