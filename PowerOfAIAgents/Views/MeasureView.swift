@@ -17,7 +17,8 @@ final class MeasureModel: ObservableObject {
     @Published private(set) var encoder: ModelRun?
     @Published private(set) var generative: ModelRun?
     @Published private(set) var generativeProgress = 0
-    @Published private(set) var generativeError: String?
+    /// GenerationError's own description is "(null)", so only a plain message is shown.
+    @Published private(set) var generativeFailed = false
     @Published private(set) var appliedToLab = false
     private var job: Task<Void, Never>?
 
@@ -70,7 +71,7 @@ final class MeasureModel: ObservableObject {
 
     private func measureGenerative() async {
         running = .generative
-        generativeError = nil
+        generativeFailed = false
         generativeProgress = 0
         let links = Array(Article.english.links.prefix(Self.generativeLinks))
         let clock = ContinuousClock()
@@ -84,7 +85,7 @@ final class MeasureModel: ObservableObject {
                 if verdict == link.relevant { correct += 1 }
                 generativeProgress += 1
             } catch {
-                generativeError = error.localizedDescription
+                generativeFailed = true
                 return
             }
         }
@@ -225,14 +226,11 @@ struct MeasureView: View {
                                 "It generates its answer token by token before deciding: better at context, but each decision costs far more."))
                     .font(.caption)
                     .foregroundStyle(Brand.dim(scheme))
-            } else if let error = model.generativeError {
-                VStack(alignment: .leading, spacing: 4) {
-                    Label(prefs.text("O modelo não respondeu. Tenta outra vez daqui a pouco.", "The model did not answer. Try again in a moment."),
-                          systemImage: "exclamationmark.triangle")
-                        .font(.subheadline)
-                        .foregroundStyle(Brand.danger)
-                    Text(error).font(.caption2.monospaced()).foregroundStyle(Brand.faint(scheme)).lineLimit(3)
-                }
+            } else if model.generativeFailed {
+                Label(prefs.text("O modelo não respondeu. Tenta outra vez daqui a pouco.", "The model did not answer. Try again in a moment."),
+                      systemImage: "exclamationmark.triangle")
+                    .font(.subheadline)
+                    .foregroundStyle(Brand.danger)
             } else {
                 placeholder
             }
