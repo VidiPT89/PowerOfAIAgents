@@ -356,7 +356,7 @@ struct RacePanel: View {
         .background(Brand.panel(scheme), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Brand.agentColor(profile.id).opacity(0.35)))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(profile.name), \(profile.kind == .local ? "local" : prefs.text("nuvem", "cloud")), \(run.finds) \(prefs.text("achados", "finds")), \(run.decisions) \(prefs.text("decisões", "decisions"))")
+        .accessibilityLabel("\(profile.name), \(profile.kind == .local ? "local" : prefs.text("nuvem", "cloud")), \(run.finds) \(prefs.text("achados", "finds")), \(run.decisions) \(prefs.text("decisões", "decisions")), \(run.errors) \(prefs.text("erros", "errors"))")
     }
 
     private func metric(_ label: String, _ value: String) -> some View {

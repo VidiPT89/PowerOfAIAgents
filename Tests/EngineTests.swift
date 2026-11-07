@@ -438,4 +438,36 @@ final class EngineTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testMeasuredNetworkPresetSurvivesARelaunch() {
+        let suite = "lab-test-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        XCTAssertNil(AgentLab(defaults: defaults).measuredNetwork)
+        AgentLab(defaults: defaults).measuredNetwork = 87
+        XCTAssertEqual(AgentLab(defaults: defaults).measuredNetwork, 87)
+        defaults.set(-1.0, forKey: "measuredNetwork")
+        XCTAssertNil(AgentLab(defaults: defaults).measuredNetwork)
+    }
+
+    @MainActor
+    func testModelResultsApplyEvenWhenTheNetworkFails() async {
+        let suite = "lab-test-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let lab = AgentLab(defaults: defaults)
+        let model = MeasureModel(network: { throw URLError(.notConnectedToInternet) },
+                                 encode: { links in ModelRun(decisions: links.count, correct: links.count, totalMilliseconds: 0.12) },
+                                 availability: { .systemTooOld })
+        model.measureAll()
+        await finishMeasurement(model)
+        XCTAssertTrue(model.networkFailed)
+        XCTAssertNil(model.fresh)
+        XCTAssertTrue(model.hasResults)
+        model.apply(to: lab)
+        XCTAssertTrue(model.appliedToLab)
+        XCTAssertEqual(lab.tunings[0].accuracy, 1)
+        XCTAssertEqual(lab.tunings[1].network, AgentTuning.defaults[1].network)
+        XCTAssertNil(lab.measuredNetwork)
+    }
 }

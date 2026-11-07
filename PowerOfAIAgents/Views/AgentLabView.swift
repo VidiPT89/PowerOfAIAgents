@@ -5,9 +5,12 @@ import SwiftUI
 final class AgentLab: ObservableObject {
     private let defaults: UserDefaults
     private static let key = "agentTunings"
+    private static let measuredKey = "measuredNetwork"
 
-    /// Last fresh-connection trip measured on this device, offered as a network preset.
-    @Published var measuredNetwork: Double?
+    /// Last fresh-connection trip measured on this device, offered as a network preset and kept between launches.
+    @Published var measuredNetwork: Double? {
+        didSet { defaults.set(measuredNetwork, forKey: Self.measuredKey) }
+    }
 
     @Published var tunings: [AgentTuning] {
         didSet {
@@ -26,6 +29,7 @@ final class AgentLab: ObservableObject {
         } else {
             tunings = AgentTuning.defaults
         }
+        measuredNetwork = (defaults.object(forKey: Self.measuredKey) as? Double).flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
     }
 
     var profiles: [AgentProfile] { AgentProfile.lineup(tuned: tunings) }
@@ -46,6 +50,7 @@ final class AgentLab: ObservableObject {
         guard let first = cloud.first, cloud.allSatisfy({ abs($0 - first) < 0.5 }) else { return nil }
         return presets.first { abs($0.clamped(to: AgentTuning.networkRange) - first) < 0.5 }
     }
+
     func reset(agent id: Int) { tunings[id] = AgentTuning.defaults[id] }
 }
 

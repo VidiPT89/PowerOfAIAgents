@@ -43,9 +43,8 @@ struct RootView: View {
     }
 }
 
-enum AppSection: String, CaseIterable, Identifiable {
+enum AppSection {
     case race, swarm, measure, insights, settings
-    var id: String { rawValue }
     var symbol: String {
         switch self {
         case .race: "flag.checkered"

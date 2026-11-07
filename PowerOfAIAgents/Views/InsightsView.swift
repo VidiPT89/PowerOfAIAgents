@@ -10,7 +10,7 @@ struct InsightsView: View {
     private var segments: [(KeyPath<LatencyBreakdown, Double>, String, String, Color)] {[
         (\.tcp, "TCP", "TCP", Color(hex: 0x64748B)),
         (\.tls, "TLS", "TLS", Color(hex: 0x94A3B8)),
-        (\.routing, "Rota até ao data center", "Route to the data centre", Brand.cloud),
+        (\.routing, "Rota até ao centro de dados", "Route to the data centre", Brand.cloud),
         (\.queue, "Fila no servidor", "Server queue", Color(hex: 0xA78BFA)),
         (\.inference, "Inferência", "Inference", Brand.orange),
     ]}
@@ -22,7 +22,7 @@ struct InsightsView: View {
                     eyebrow: prefs.text("Anatomia da latência", "Latency anatomy"),
                     title: prefs.text("Onde vão os milissegundos", "Where the milliseconds go"),
                     subtitle: prefs.text(
-                        "Uma decisão na cloud paga a viagem antes de o modelo começar a pensar. No dispositivo, só se paga a inferência.",
+                        "Uma decisão na nuvem paga a viagem antes de o modelo começar a pensar. No dispositivo, só se paga a inferência.",
                         "A cloud decision pays for the trip before the model even starts thinking. On the device, you only pay for inference."))
                 anatomy
                 cascade

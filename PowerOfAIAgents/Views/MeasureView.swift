@@ -176,6 +176,7 @@ struct MeasureView: View {
                 encoderCard
                 generativeCard
                 if let summary { summaryCard(summary) }
+                if model.hasResults, !model.isRunning { applyCard }
                 Text(prefs.text(
                     "A medição só faz pedidos HEAD a ividi.dev e só quando tocas em Medir. Não envia o texto do artigo. Como em qualquer pedido HTTPS, o servidor recebe o endereço IP e os metadados da ligação.",
                     "Measuring only sends HEAD requests to ividi.dev, and only when you tap Measure. It does not send the article text. As with any HTTPS request, the server receives the IP address and connection metadata."))
@@ -233,7 +234,9 @@ struct MeasureView: View {
                     .foregroundStyle(Brand.dim(scheme))
             }
             if model.networkFailed {
-                Label(prefs.text("Sem ligação a ividi.dev. Verifica a internet e mede outra vez.", "Could not reach ividi.dev. Check the internet and measure again."),
+                Label(model.fresh == nil
+                      ? prefs.text("Sem ligação a ividi.dev. Verifica a internet e mede outra vez.", "Could not reach ividi.dev. Check the internet and measure again.")
+                      : prefs.text("Só \(model.networkSampleCount) de \(MeasureModel.networkRounds) medições terminaram; as outras falharam.", "Only \(model.networkSampleCount) of \(MeasureModel.networkRounds) measurements finished; the others failed."),
                       systemImage: "wifi.exclamationmark")
                     .font(.subheadline)
                     .foregroundStyle(Brand.danger)
@@ -319,6 +322,13 @@ struct MeasureView: View {
                 "estimated encoder decisions in the time of the first HTTPS request (\(summary.trip.milliseconds)), including web-server work. This does not measure a cloud model."))
                 .font(.subheadline)
                 .foregroundStyle(Brand.dim(scheme))
+        }
+        .card()
+    }
+
+    /// Available whenever something was measured, even if the network or one model failed.
+    private var applyCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 10) {
                 Button {
                     model.apply(to: lab)
@@ -328,7 +338,6 @@ struct MeasureView: View {
                         .fixedSize()
                 }
                 .buttonStyle(PrimaryButtonStyle())
-                .disabled(model.isRunning)
                 if model.appliedToLab {
                     Label(prefs.text("Aplicado ao laboratório", "Applied to the lab"), systemImage: "checkmark.circle.fill")
                         .font(.caption.weight(.semibold))

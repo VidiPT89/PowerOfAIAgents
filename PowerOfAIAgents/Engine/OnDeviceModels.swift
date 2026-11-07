@@ -63,7 +63,7 @@ struct EmbeddingClassifier {
 
 /// Apple's on-device language model (Apple Intelligence), when the device and system support it.
 enum GenerativeClassifier {
-    enum Unavailable: Equatable, Sendable {
+    enum Unavailable: Error, Equatable, Sendable {
         case systemTooOld, simulator, deviceNotEligible, intelligenceOff, modelNotReady, other
     }
 
@@ -97,7 +97,7 @@ enum GenerativeClassifier {
             return response.content.aboutSpiders
         }
         #endif
-        throw CancellationError()
+        throw unavailableReason ?? .other
     }
 }
 

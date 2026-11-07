@@ -61,7 +61,7 @@ struct SwarmView: View {
                         "Cada cursor é um agente. Tiram a próxima camada de uma fila partilhada, voam até lá e constroem-na. Mais agentes, menos espera.",
                         "Each cursor is an agent. They take the next layer from a shared queue, fly there and build it. More agents, less waiting."))
                 controls
-                SwarmCanvas(engine: model.engine, summary: prefs.text("\(model.engine.builtCount) de \(model.engine.layers.count) camadas construídas por \(model.agentCount) agentes", "\(model.engine.builtCount) of \(model.engine.layers.count) layers built by \(model.agentCount) agents"))
+                SwarmCanvas(engine: model.engine, summary: prefs.text("\(model.engine.builtCount) de \(model.engine.layers.count) camadas construídas por \(agentsText)", "\(model.engine.builtCount) of \(model.engine.layers.count) layers built by \(agentsText)"))
                     .aspectRatio(16 / 10, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Brand.stroke(scheme)))
@@ -74,6 +74,12 @@ struct SwarmView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Brand.background(scheme).ignoresSafeArea())
+    }
+
+    /// "1 agent", "12 agents".
+    private var agentsText: String {
+        let one = model.agentCount == 1
+        return "\(model.agentCount) \(prefs.text(one ? "agente" : "agentes", one ? "agent" : "agents"))"
     }
 
     private var controls: some View {
@@ -101,7 +107,7 @@ struct SwarmView: View {
                 Slider(value: Binding(get: { Double(model.agentCount) }, set: { model.agentCount = Int($0.rounded()) }), in: 1...32, step: 1)
                     .accessibilityLabel(prefs.text("Número de agentes", "Number of agents"))
                     .accessibilityValue("\(model.agentCount)")
-                Text("\(model.agentCount) \(prefs.text(model.agentCount == 1 ? "agente" : "agentes", model.agentCount == 1 ? "agent" : "agents"))")
+                Text(agentsText)
                     .font(.system(.subheadline, design: .monospaced, weight: .semibold))
                     .frame(minWidth: 96, alignment: .trailing)
             }
@@ -115,7 +121,7 @@ struct SwarmView: View {
                     Circle().fill(Brand.agentColor(i)).frame(width: 9, height: 9).overlay(Circle().stroke(.black.opacity(0.5), lineWidth: 1))
                 }
             }
-            Text("\(model.agentCount) \(prefs.text("agentes", "agents"))")
+            Text(agentsText)
             Text("·").foregroundStyle(.white.opacity(0.4))
             Text("\(model.engine.builtCount) / \(model.engine.layers.count) \(prefs.text("camadas", "layers"))")
             ProgressView(value: Double(model.engine.builtCount), total: Double(model.engine.layers.count))
