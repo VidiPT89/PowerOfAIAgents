@@ -29,11 +29,14 @@ final class MeasureModel: ObservableObject {
     @Published private(set) var encoderUnavailable = false
     /// Language of the terms behind the current results.
     @Published private(set) var sampleLanguage: AppLanguage = .english
+    /// The app's language had no word embedding on this system, so the measurement used English.
+    @Published private(set) var fellBackToEnglish = false
     private var job: Task<Void, Never>?
     private let network: () async throws -> (fresh: NetworkSample, reused: NetworkSample)
     private let encode: ([ArticleLink], AppLanguage) async -> ModelRun?
     private let generate: (String, AppLanguage) async throws -> Bool
     private let availability: () -> GenerativeClassifier.Unavailable?
+    private let hasEmbedding: (AppLanguage) -> Bool
 
     init(
         network: @escaping () async throws -> (fresh: NetworkSample, reused: NetworkSample) = { try await NetworkProbe.measurePair() },
@@ -41,12 +44,14 @@ final class MeasureModel: ObservableObject {
             await Task.detached(priority: .userInitiated) { EmbeddingClassifier(language: language)?.run(on: links) }.value
         },
         generate: @escaping (String, AppLanguage) async throws -> Bool = { try await GenerativeClassifier.isAboutSpiders($0, language: $1) },
-        availability: @escaping () -> GenerativeClassifier.Unavailable? = { GenerativeClassifier.unavailableReason }
+        availability: @escaping () -> GenerativeClassifier.Unavailable? = { GenerativeClassifier.unavailableReason },
+        hasEmbedding: @escaping (AppLanguage) -> Bool = { EmbeddingClassifier(language: $0) != nil }
     ) {
         self.network = network
         self.encode = encode
         self.generate = generate
         self.availability = availability
+        self.hasEmbedding = hasEmbedding
     }
 
     var isRunning: Bool { running != nil }
@@ -54,7 +59,9 @@ final class MeasureModel: ObservableObject {
 
     func measureAll(language: AppLanguage = .english) {
         guard !isRunning else { return }
-        sampleLanguage = language
+        // Both models keep the same terms: without the Portuguese embedding (some systems lack it), both use English.
+        fellBackToEnglish = language != .english && !hasEmbedding(language)
+        sampleLanguage = fellBackToEnglish ? .english : language
         appliedToLab = false
         fresh = nil
         reused = nil
@@ -181,7 +188,13 @@ struct MeasureView: View {
                 controls
                 Text(prefs.text("Os dois modelos classificam os mesmos 12 termos do artigo, sem contexto, no idioma da app (agora: \(languageName(prefs.language))). Precisão nesta amostra pequena; o tempo do encoder exclui carregar o vocabulário.", "Both models classify the same 12 terms from the article without context, in the app's language (now: \(languageName(prefs.language))). Accuracy is for this small sample; encoder timing excludes loading the embedding."))
                     .font(.caption).foregroundStyle(Brand.dim(scheme))
-                if model.hasResults, !model.isRunning, model.sampleLanguage != prefs.language {
+                if model.hasResults, !model.isRunning, model.fellBackToEnglish {
+                    Label(prefs.text("Este aparelho não tem o vocabulário em português instalado, por isso os dois modelos usaram os mesmos termos em inglês.",
+                                     "This device does not have the Portuguese word embedding installed, so both models used the same English terms."),
+                          systemImage: "character.bubble")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Brand.accent(scheme))
+                } else if model.hasResults, !model.isRunning, model.sampleLanguage != prefs.language {
                     Label(prefs.text("Os resultados abaixo usaram os termos em \(languageName(model.sampleLanguage)). Mede outra vez para usar \(languageName(prefs.language)).",
                                      "The results below used the \(languageName(model.sampleLanguage)) terms. Measure again to use \(languageName(prefs.language))."),
                           systemImage: "character.bubble")
@@ -274,9 +287,7 @@ struct MeasureView: View {
                     .font(.caption)
                     .foregroundStyle(Brand.dim(scheme))
             } else if model.encoderUnavailable {
-                Text(model.sampleLanguage == .portuguese
-                     ? prefs.text("O vocabulário em português não está instalado neste sistema. Muda o idioma para inglês nas Definições e mede outra vez.", "The Portuguese word embedding is not installed on this system. Switch the language to English in Settings and measure again.")
-                     : prefs.text("O vocabulário em inglês não está disponível neste sistema.", "The English word embedding is unavailable on this system."))
+                Text(prefs.text("O vocabulário de palavras do sistema não está disponível neste aparelho.", "The system word embedding is unavailable on this device."))
                     .font(.subheadline)
             } else {
                 placeholder

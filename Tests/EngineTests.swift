@@ -511,7 +511,7 @@ final class EngineTests: XCTestCase {
             XCTAssertEqual(language, .portuguese)
             generated.append(term)
             return true
-        }, availability: { nil })
+        }, availability: { nil }, hasEmbedding: { _ in true })
         model.measureAll(language: .portuguese)
         await finishMeasurement(model)
         XCTAssertEqual(encoded, [.portuguese])
@@ -523,5 +523,30 @@ final class EngineTests: XCTestCase {
     func testGenerativeInstructionsMatchTheLanguage() {
         XCTAssertTrue(GenerativeClassifier.instructions(.portuguese).contains("aranhas"))
         XCTAssertTrue(GenerativeClassifier.instructions(.english).contains("spiders"))
+    }
+
+    @MainActor
+    func testMissingPortugueseEmbeddingMeasuresBothModelsInEnglish() async {
+        var encoded: [AppLanguage] = []
+        var generated: [AppLanguage] = []
+        let model = MeasureModel(network: {
+            (NetworkSample(server: 100), NetworkSample(server: 50))
+        }, encode: { links, language in
+            encoded.append(language)
+            XCTAssertEqual(links, MeasureModel.benchmarkLinks(.english))
+            return ModelRun(decisions: links.count, correct: 8, totalMilliseconds: 0.05)
+        }, generate: { _, language in
+            generated.append(language)
+            return true
+        }, availability: { nil }, hasEmbedding: { $0 == .english })
+        model.measureAll(language: .portuguese)
+        await finishMeasurement(model)
+        XCTAssertTrue(model.fellBackToEnglish)
+        XCTAssertEqual(model.sampleLanguage, .english)
+        XCTAssertEqual(encoded, [.english])
+        XCTAssertEqual(Set(generated), [.english])
+        model.measureAll(language: .english)
+        await finishMeasurement(model)
+        XCTAssertFalse(model.fellBackToEnglish)
     }
 }
