@@ -38,7 +38,7 @@ struct RootView: View {
     }
 }
 
-enum Section: String, CaseIterable, Identifiable {
+enum AppSection: String, CaseIterable, Identifiable {
     case race, swarm, insights, settings
     var id: String { rawValue }
     var symbol: String {
@@ -55,22 +55,22 @@ struct MainView: View {
     @EnvironmentObject private var prefs: Preferences
     @StateObject private var race = RaceModel()
     @StateObject private var swarm = SwarmModel()
-    @State private var section: Section = .race
+    @State private var section: AppSection = .race
 
     var body: some View {
         TabView(selection: $section) {
             RaceView(model: race)
-                .tabItem { Label(title(.race), systemImage: Section.race.symbol) }
-                .tag(Section.race)
+                .tabItem { Label(title(.race), systemImage: AppSection.race.symbol) }
+                .tag(AppSection.race)
             SwarmView(model: swarm)
-                .tabItem { Label(title(.swarm), systemImage: Section.swarm.symbol) }
-                .tag(Section.swarm)
+                .tabItem { Label(title(.swarm), systemImage: AppSection.swarm.symbol) }
+                .tag(AppSection.swarm)
             InsightsView()
-                .tabItem { Label(title(.insights), systemImage: Section.insights.symbol) }
-                .tag(Section.insights)
+                .tabItem { Label(title(.insights), systemImage: AppSection.insights.symbol) }
+                .tag(AppSection.insights)
             SettingsView()
-                .tabItem { Label(title(.settings), systemImage: Section.settings.symbol) }
-                .tag(Section.settings)
+                .tabItem { Label(title(.settings), systemImage: AppSection.settings.symbol) }
+                .tag(AppSection.settings)
         }
         .onChange(of: section) { _, new in
             if new != .race { race.pause() }
@@ -78,7 +78,7 @@ struct MainView: View {
         }
     }
 
-    private func title(_ section: Section) -> String {
+    private func title(_ section: AppSection) -> String {
         switch section {
         case .race: prefs.text("Corrida", "Race")
         case .swarm: prefs.text("Enxame", "Swarm")

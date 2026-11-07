@@ -76,7 +76,7 @@ enum Blueprint {
             }
         }
         // Pagination
-        for i in 0..<6 { add(.chip, 0.73 + Double(i) * 0.043, 0.965 - 0.0, 0.035, 0.022) }
+        for i in 0..<6 { add(.chip, 0.73 + Double(i) * 0.043, 0.965, 0.035, 0.022) }
         add(.text, 0.2, 0.968, 0.12, 0.015)
         return layers
     }
@@ -110,7 +110,6 @@ struct SwarmEngine: Sendable {
     let buildTime: ClosedRange<Double>
     private(set) var agents: [SwarmAgent]
     private(set) var builtAt: [Double?]
-    private(set) var claimed: [Int?]
     private(set) var time = 0.0
     private var queue = 0
     private var rng: SeededRandom
@@ -121,7 +120,6 @@ struct SwarmEngine: Sendable {
         self.buildTime = buildTime
         rng = SeededRandom(seed: seed)
         builtAt = Array(repeating: nil, count: layers.count)
-        claimed = Array(repeating: nil, count: layers.count)
         let count = max(1, agentCount)
         agents = (0..<count).map { i in
             let start = CGPoint(x: 0.5 + 0.3 * cos(Double(i) / Double(count) * 2 * .pi),
@@ -171,7 +169,6 @@ struct SwarmEngine: Sendable {
         }
         let layer = queue
         queue += 1
-        claimed[layer] = i
         let rect = layers[layer].rect
         let target = CGPoint(x: rect.midX, y: rect.midY)
         let from = agents[i].position

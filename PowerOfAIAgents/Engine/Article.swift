@@ -4,7 +4,6 @@ import Foundation
 struct ArticleToken: Sendable, Equatable {
     let text: String
     let link: Int?
-    let relevant: Bool
     /// Punctuation right after a link sticks to it, without a space.
     var joinsPrevious = false
 }
@@ -25,16 +24,16 @@ struct Article: Sendable {
             var rest = Substring(source)
             while !rest.isEmpty {
                 if let open = rest.firstIndex(of: "["), let close = rest[open...].firstIndex(of: "]") {
-                    tokens += Article.words(rest[..<open], link: nil, relevant: false)
+                    tokens += Article.words(rest[..<open], link: nil, afterLink: tokens.last?.link != nil)
                     let body = rest[rest.index(after: open)..<close]
                     let parts = body.split(separator: "|", maxSplits: 1)
                     let relevant = parts.count > 1 && parts[1] == "s"
-                    tokens += Article.words(parts.first ?? "", link: linkCount, relevant: relevant)
+                    tokens += Article.words(parts.first ?? "", link: linkCount, afterLink: false)
                     relevance.append(relevant)
                     linkCount += 1
                     rest = rest[rest.index(after: close)...]
                 } else {
-                    tokens += Article.words(rest, link: nil, relevant: false)
+                    tokens += Article.words(rest, link: nil, afterLink: tokens.last?.link != nil)
                     rest = ""
                 }
             }
@@ -44,10 +43,11 @@ struct Article: Sendable {
         self.relevance = relevance
     }
 
-    private static func words(_ text: Substring, link: Int?, relevant: Bool) -> [ArticleToken] {
-        let attached = text.first.map { !$0.isWhitespace } ?? false
+    /// Text that touches the closing bracket of a link (".", ",") is glued to it.
+    private static func words(_ text: Substring, link: Int?, afterLink: Bool) -> [ArticleToken] {
+        let attached = afterLink && text.first.map { !$0.isWhitespace } == true
         return text.split(separator: " ").enumerated().map { index, word in
-            ArticleToken(text: String(word), link: link, relevant: relevant, joinsPrevious: index == 0 && attached && link == nil)
+            ArticleToken(text: String(word), link: link, joinsPrevious: index == 0 && attached)
         }
     }
 

@@ -5,13 +5,15 @@ final class SwarmModel: ObservableObject {
     @Published private(set) var engine: SwarmEngine
     @Published private(set) var running = false
     @Published var agentCount: Int = 12 { didSet { if agentCount != oldValue { reset() } } }
-    @Published private(set) var soloTime: Double
+    /// The run is deterministic, so the finishing time is known before it starts.
+    @Published private(set) var expectedTime: Double
+    let soloTime = SwarmEngine.completionTime(agentCount: 1)
     private var clock = 0.0
     private var loop: Task<Void, Never>?
 
     init() {
         engine = SwarmEngine(agentCount: 12)
-        soloTime = SwarmEngine.completionTime(agentCount: 1)
+        expectedTime = SwarmEngine.completionTime(agentCount: 12)
     }
 
     var hasStarted: Bool { engine.time > 0 }
@@ -49,6 +51,7 @@ final class SwarmModel: ObservableObject {
         pause()
         clock = 0
         engine = SwarmEngine(agentCount: agentCount)
+        expectedTime = SwarmEngine.completionTime(agentCount: agentCount)
     }
 }
 
@@ -136,27 +139,25 @@ struct SwarmView: View {
 
     private var stats: some View {
         let elapsed = model.engine.completionTime ?? model.engine.time
-        let projected = SwarmEngine.estimate(solo: model.soloTime, agents: model.agentCount)
         return HStack(spacing: 12) {
-            stat(prefs.text("Tempo", "Elapsed"), String(format: "%.1f s", elapsed))
+            stat(prefs.text("Tempo", "Elapsed"), String(format: "%.1f s", elapsed),
+                 detail: prefs.text(String(format: "previsto %.1f s", model.expectedTime), String(format: "expected %.1f s", model.expectedTime)))
             stat(prefs.text("Um só agente", "Single agent"), String(format: "%.0f s", model.soloTime))
-            stat(prefs.text("Aceleração", "Speed-up"), model.engine.isFinished ? String(format: "×%.1f", model.soloTime / max(elapsed, 0.01)) : String(format: "≈ ×%.1f", model.soloTime / max(projected, 0.01)))
+            stat(prefs.text("Aceleração", "Speed-up"), String(format: "×%.1f", model.soloTime / max(model.expectedTime, 0.01)))
         }
     }
 
-    private func stat(_ label: String, _ value: String) -> some View {
+    private func stat(_ label: String, _ value: String, detail: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(value).font(.system(.title3, design: .rounded, weight: .bold).monospacedDigit()).foregroundStyle(Brand.text(scheme))
             Text(label).font(.caption).foregroundStyle(Brand.dim(scheme))
+            if let detail {
+                Text(detail).font(.caption2.monospacedDigit()).foregroundStyle(Brand.faint(scheme))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card(padding: 14)
     }
-}
-
-extension SwarmEngine {
-    /// Rough projection shown before the run ends; the real figure replaces it once the build is done.
-    static func estimate(solo: Double, agents: Int) -> Double { solo / Double(max(1, agents)) * 1.08 }
 }
 
 /// The dashboard under construction, its layers and the agents' cursors.

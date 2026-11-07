@@ -112,7 +112,7 @@ struct SplashView: View {
         .onTapGesture(perform: finish)
         .task {
             withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { appeared = true }
-            try? await Task.sleep(for: .seconds(3.2))
+            guard (try? await Task.sleep(for: .seconds(3.2))) != nil else { return }
             finish()
         }
     }

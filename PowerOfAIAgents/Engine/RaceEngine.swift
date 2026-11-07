@@ -97,7 +97,6 @@ struct AgentRun: Sendable {
     var falseAlarms = 0
     var decisions = 0
     var latencySum = 0.0
-    var networkSum = 0.0
     var averageLatency: Double { decisions == 0 ? 0 : latencySum / Double(decisions) }
 }
 
@@ -167,7 +166,6 @@ struct RaceEngine: Sendable {
         runs[i].verdicts[runs[i].linkIndex] = verdict
         runs[i].decisions += 1
         runs[i].latencySum += latency.total
-        runs[i].networkSum += latency.network
         if verdict == .hit { runs[i].finds += 1 }
         if verdict == .falseAlarm { runs[i].falseAlarms += 1 }
     }

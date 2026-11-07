@@ -11,10 +11,11 @@
 - ✅ Cloud agents show the request travelling to the data centre and back (TCP · TLS, server queue, inference, response)
 - ✅ Live scoreboard with finds, decisions and average latency per decision, plus a final "× more decisions" summary
 - ✅ **Agent swarm:** from 1 to 32 cursors take layers from a shared queue and build a review dashboard on a canvas, with size badges and a live "agents · layers" status pill
-- ✅ Speed-up figures comparing the swarm against a single agent
+- ✅ Exact expected build time and speed-up compared with a single agent (the swarm is deterministic, so the result is known before it starts)
 - ✅ **Latency anatomy:** stacked bars showing where every millisecond goes (TCP, TLS, routing, queue, inference) for each agent
 - ✅ **Cascade simulator:** choose how much traffic a local model escalates to the cloud and see the resulting average latency
-- ✅ Deterministic, seedable simulation engine, separated from the UI and covered by unit tests
+- ✅ Deterministic, seedable simulation engine, separated from the UI and covered by unit tests run on every push (GitHub Actions)
+- ✅ Privacy manifest included: no tracking, no data collected, no network access
 - ✅ Animated splash screen with credits
 - ✅ Runtime language switch: Português (PT-PT) and English
 - ✅ Dark mode, Light mode and System mode
@@ -77,7 +78,7 @@ xcodebuild -project PowerOfAIAgents.xcodeproj -scheme PowerOfAIAgents-macOS -des
 xcodebuild -project PowerOfAIAgents.xcodeproj -scheme PowerOfAIAgents -destination 'generic/platform=iOS Simulator' build
 ```
 
-The unit tests cover the race engine (determinism regardless of frame rate, verdict counters, local versus cloud throughput), the cascade maths, the swarm engine (every layer built exactly once, more agents finishing faster) and the parity of links between the Portuguese and English articles.
+The unit tests cover the race engine (determinism regardless of frame rate, verdict counters, local versus cloud throughput), the cascade maths, the swarm engine (every layer built exactly once, more agents finishing faster, prediction equal to a frame-by-frame run), the article parser and text layout (every link placed, punctuation kept next to its link) and the parity of links between the Portuguese and English articles. The same checks run on GitHub Actions for every push.
 
 ## 📄 License
 

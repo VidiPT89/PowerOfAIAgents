@@ -165,19 +165,17 @@ struct RaceView: View {
                         "Cada robô percorre o artigo e decide, ligação a ligação, se fala de aranhas. Todos andam à mesma velocidade: só muda o tempo que demoram a decidir.",
                         "Each robot crawls the article and decides, link by link, whether it is about spiders. They all walk at the same speed: only the time they need to decide changes."))
                 controls
-                GeometryReader { proxy in
-                    let columns = 2
-                    let spacing: CGFloat = 12
-                    let width = (proxy.size.width - spacing * CGFloat(columns - 1)) / CGFloat(columns)
-                    let height = panelHeight
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(width), spacing: spacing), count: columns), spacing: spacing) {
-                        ForEach(model.engine.profiles) { profile in
-                            RacePanel(profile: profile, run: model.engine.runs[profile.id], engine: model.engine)
-                                .frame(width: width, height: height)
+                Grid(horizontalSpacing: 12, verticalSpacing: 12) {
+                    ForEach(0..<2, id: \.self) { row in
+                        GridRow {
+                            ForEach(model.engine.profiles[(row * 2)..<(row * 2 + 2)]) { profile in
+                                RacePanel(profile: profile, run: model.engine.runs[profile.id], engine: model.engine)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: panelHeight)
+                            }
                         }
                     }
                 }
-                .frame(height: panelHeight * 2 + 12)
                 Scoreboard(engine: model.engine)
                 Text(prefs.text(
                     "Simulação ilustrativa: os nomes dos modelos são fictícios e as latências usam ordens de grandeza reais (rede, TLS, filas e inferência).",
@@ -190,6 +188,7 @@ struct RaceView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Brand.background(scheme).ignoresSafeArea())
+        .sensoryFeedback(.success, trigger: model.engine.isFinished) { _, finished in finished }
     }
 
     private var panelHeight: CGFloat {
@@ -200,45 +199,59 @@ struct RaceView: View {
         #endif
     }
 
+    /// One row when it fits, otherwise the timing controls drop to a second row (narrow iPhones, English labels).
     private var controls: some View {
-        HStack(spacing: 10) {
-            Button {
-                model.toggle()
-            } label: {
-                Label(model.running ? prefs.text("Pausa", "Pause") : (model.hasStarted && !model.engine.isFinished ? prefs.text("Continuar", "Resume") : prefs.text("Iniciar corrida", "Start race")),
-                      systemImage: model.running ? "pause.fill" : "play.fill")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                actionButtons
+                Spacer(minLength: 0)
+                timing
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) { actionButtons }
+                HStack { timing }
+            }
+        }
+    }
+
+    @ViewBuilder private var actionButtons: some View {
+        Button {
+            model.toggle()
+        } label: {
+            Label(model.running ? prefs.text("Pausa", "Pause") : (model.hasStarted && !model.engine.isFinished ? prefs.text("Continuar", "Resume") : prefs.text("Iniciar corrida", "Start race")),
+                  systemImage: model.running ? "pause.fill" : "play.fill")
                 .lineLimit(1)
                 .fixedSize()
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .keyboardShortcut(.space, modifiers: [])
-
-            Button {
-                model.reset()
-            } label: {
-                Label(prefs.text("Repor", "Reset"), systemImage: "arrow.counterclockwise")
-                    .lineLimit(1)
-                    .fixedSize()
-            }
-            .buttonStyle(SecondaryButtonStyle())
-
-            Spacer(minLength: 0)
-
-            Menu {
-                ForEach(RaceModel.durations, id: \.self) { value in
-                    Button("\(Int(value)) s") { model.duration = value }
-                }
-            } label: {
-                Label("\(Int(model.duration)) s", systemImage: "timer")
-                    .font(.subheadline.monospacedDigit())
-            }
-            .fixedSize()
-
-            Text(String(format: "%05.2f s", model.engine.time))
-                .font(.system(.subheadline, design: .monospaced, weight: .semibold))
-                .foregroundStyle(Brand.accent(scheme))
-                .frame(minWidth: 70, alignment: .trailing)
         }
+        .buttonStyle(PrimaryButtonStyle())
+        .keyboardShortcut(.space, modifiers: [])
+
+        Button {
+            model.reset()
+        } label: {
+            Label(prefs.text("Repor", "Reset"), systemImage: "arrow.counterclockwise")
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .buttonStyle(SecondaryButtonStyle())
+    }
+
+    @ViewBuilder private var timing: some View {
+        Menu {
+            ForEach(RaceModel.durations, id: \.self) { value in
+                Button("\(Int(value)) s") { model.duration = value }
+            }
+        } label: {
+            Label("\(Int(model.duration)) s", systemImage: "timer")
+                .font(.subheadline.monospacedDigit())
+        }
+        .fixedSize()
+
+        Text(String(format: "%05.2f s", model.engine.time))
+            .font(.system(.subheadline, design: .monospaced, weight: .semibold))
+            .foregroundStyle(Brand.accent(scheme))
+            .fixedSize()
+            .frame(minWidth: 70, alignment: .trailing)
     }
 }
 
@@ -322,6 +335,8 @@ struct PageCanvas: View {
         let fontSize: CGFloat = size.width < 220 ? 8.5 : (size.width < 360 ? 10 : 11.5)
         let key = "\(prefs.language.rawValue)-\(Int(size.width))-\(fontSize)-\(scheme == .dark)"
         if let cached = Self.cache[key] { return cached }
+        // Window resizes on the Mac create a new width every frame; keep the cache small.
+        if Self.cache.count > 16 { Self.cache.removeAll() }
         let layout = ArticleLayout(article: Article.sample(prefs.language), width: size.width - 24, fontSize: fontSize,
                                    linkColor: scheme == .dark ? Color(hex: 0x7DB4FF) : Color(hex: 0x2457C5),
                                    textColor: scheme == .dark ? Color(hex: 0xC9CED8) : Color(hex: 0x2A2A2A))

@@ -69,4 +69,32 @@ final class EngineTests: XCTestCase {
         XCTAssertLessThan(eight, one / 4)
         XCTAssertLessThan(thirtyTwo, eight)
     }
+
+    func testPunctuationAfterALinkSticksToIt() {
+        let article = Article(title: "T", markup: ["A [web|s], then [rain|n]."])
+        let tokens = article.paragraphs[0]
+        XCTAssertEqual(tokens.map(\.text), ["A", "web", ",", "then", "rain", "."])
+        XCTAssertEqual(tokens.map(\.joinsPrevious), [false, false, true, false, false, true])
+        XCTAssertEqual(article.relevance, [true, false])
+    }
+
+    @MainActor
+    func testEveryLinkGetsAPlaceInTheLayout() {
+        for article in [Article.english, Article.portuguese] {
+            for width in [140.0, 320.0, 520.0] {
+                let layout = ArticleLayout(article: article, width: width, fontSize: 10, linkColor: .blue, textColor: .black)
+                XCTAssertFalse(layout.linkRects.contains { $0.isNull }, "\(article.title) @ \(width)")
+                XCTAssertTrue(layout.linkRects.allSatisfy { $0.maxY < layout.height })
+                XCTAssertGreaterThan(layout.rect(globalLink: article.relevance.count).minY, layout.rect(globalLink: 0).minY)
+            }
+        }
+    }
+
+    func testSwarmPredictionMatchesASteppedRun() {
+        let expected = SwarmEngine.completionTime(agentCount: 6)
+        var engine = SwarmEngine(agentCount: 6)
+        var t = 0.0
+        while !engine.isFinished { t += 1.0 / 60; engine.advance(to: t) }
+        XCTAssertEqual(engine.completionTime ?? 0, expected, accuracy: 1e-9)
+    }
 }
