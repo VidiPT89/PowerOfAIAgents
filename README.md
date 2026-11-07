@@ -4,6 +4,10 @@
 
 [Report Bug](https://github.com/VidiPT89/PowerOfAIAgents/issues) · [Request Feature](https://github.com/VidiPT89/PowerOfAIAgents/issues)
 
+<p align="center">
+  <img src="docs/demo.gif" alt="Power of AI Agents demo: intro, agent race, agent swarm and latency anatomy on iPhone" width="320">
+</p>
+
 ## ✨ Features
 
 - ✅ **Agent race:** four robotic spider agents crawl the same article and decide, link by link, whether each link is about spiders. Two run locally, two in the cloud. They all walk at the same speed, so the only difference is how long each one needs to decide
