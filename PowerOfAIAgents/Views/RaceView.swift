@@ -192,6 +192,7 @@ struct RaceView: View {
         }
         .background(Brand.background(scheme).ignoresSafeArea())
         .sensoryFeedback(.success, trigger: model.engine.isFinished) { _, finished in finished }
+        .onAppear { if model.engine.isFinished { shareImage = shareCard.image() } }
         .onChange(of: model.engine.isFinished) { _, finished in shareImage = finished ? shareCard.image() : nil }
         .onChange(of: prefs.language) { _, _ in if model.engine.isFinished { shareImage = shareCard.image() } }
         .sheet(isPresented: $showLab) {
@@ -218,7 +219,7 @@ struct RaceView: View {
         return ShareCard(eyebrow: prefs.text("Corrida de agentes", "Agent race"),
                          title: prefs.text("Quatro agentes, uma página, \(Int(engine.duration)) segundos", "Four agents, one page, \(Int(engine.duration)) seconds"),
                          rows: rows,
-                         footnote: lab.isCustomised ? prefs.text("Power of AI Agents · valores personalizados", "Power of AI Agents · custom values") : "Power of AI Agents")
+                         footnote: prefs.text("Simulação ilustrativa · Power of AI Agents", "Illustrative simulation · Power of AI Agents"))
     }
 
     private var panelHeight: CGFloat {
@@ -355,7 +356,7 @@ struct RacePanel: View {
         .background(Brand.panel(scheme), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Brand.agentColor(profile.id).opacity(0.35)))
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(profile.name), \(profile.kind.rawValue), \(run.finds) \(prefs.text("achados", "finds")), \(run.decisions) \(prefs.text("decisões", "decisions"))")
+        .accessibilityLabel("\(profile.name), \(profile.kind == .local ? "local" : prefs.text("nuvem", "cloud")), \(run.finds) \(prefs.text("achados", "finds")), \(run.decisions) \(prefs.text("decisões", "decisions"))")
     }
 
     private func metric(_ label: String, _ value: String) -> some View {

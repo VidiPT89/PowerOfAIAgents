@@ -5,10 +5,10 @@ import SwiftUI
 final class MeasureModel: ObservableObject {
     enum Step: Equatable { case network, encoder, generative }
 
-    /// Fresh and reused connections measured per run.
+    /// Request pairs measured per run; reuse is verified by system metrics.
     static let networkRounds = 3
-    /// Links given to the generative model (it needs about a second each).
-    static let generativeLinks = 12
+    /// Identical bounded sample for both models.
+    static let benchmarkLinks = Array(Article.english.links.prefix(12))
 
     @Published private(set) var running: Step?
     @Published private(set) var fresh: NetworkSample?
@@ -20,7 +20,27 @@ final class MeasureModel: ObservableObject {
     /// GenerationError's own description is "(null)", so only a plain message is shown.
     @Published private(set) var generativeFailed = false
     @Published private(set) var appliedToLab = false
+    @Published private(set) var networkSampleCount = 0
+    @Published private(set) var encoderUnavailable = false
     private var job: Task<Void, Never>?
+    private let network: () async throws -> (fresh: NetworkSample, reused: NetworkSample)
+    private let encode: ([ArticleLink]) async -> ModelRun?
+    private let generate: (String) async throws -> Bool
+    private let availability: () -> GenerativeClassifier.Unavailable?
+
+    init(
+        network: @escaping () async throws -> (fresh: NetworkSample, reused: NetworkSample) = { try await NetworkProbe.measurePair() },
+        encode: @escaping ([ArticleLink]) async -> ModelRun? = { links in
+            await Task.detached(priority: .userInitiated) { EmbeddingClassifier()?.run(on: links) }.value
+        },
+        generate: @escaping (String) async throws -> Bool = { try await GenerativeClassifier.isAboutSpiders($0) },
+        availability: @escaping () -> GenerativeClassifier.Unavailable? = { GenerativeClassifier.unavailableReason }
+    ) {
+        self.network = network
+        self.encode = encode
+        self.generate = generate
+        self.availability = availability
+    }
 
     var isRunning: Bool { running != nil }
     var hasResults: Bool { fresh != nil || encoder != nil || generative != nil }
@@ -28,11 +48,26 @@ final class MeasureModel: ObservableObject {
     func measureAll() {
         guard !isRunning else { return }
         appliedToLab = false
+        fresh = nil
+        reused = nil
+        encoder = nil
+        generative = nil
+        networkFailed = false
+        generativeFailed = false
+        encoderUnavailable = false
+        generativeProgress = 0
+        networkSampleCount = 0
+        running = .network
         job = Task { [weak self] in
+            guard !Task.isCancelled else { return }
             await self?.measureNetwork()
+            guard !Task.isCancelled else { return }
             await self?.measureEncoder()
-            if GenerativeClassifier.unavailableReason == nil { await self?.measureGenerative() }
+            guard !Task.isCancelled else { return }
+            if self?.availability() == nil { await self?.measureGenerative() }
+            guard !Task.isCancelled else { return }
             self?.running = nil
+            self?.job = nil
         }
     }
 
@@ -49,14 +84,17 @@ final class MeasureModel: ObservableObject {
         for _ in 0..<Self.networkRounds {
             guard !Task.isCancelled else { return }
             do {
-                let pair = try await NetworkProbe.measurePair()
+                let pair = try await network()
+                guard !Task.isCancelled else { return }
                 fresh.append(pair.fresh)
                 reused.append(pair.reused)
             } catch {
-                networkFailed = fresh.isEmpty
+                guard !Task.isCancelled else { return }
+                networkFailed = true
                 break
             }
         }
+        networkSampleCount = fresh.count
         self.fresh = NetworkSample.average(fresh)
         self.reused = NetworkSample.average(reused)
     }
@@ -64,27 +102,30 @@ final class MeasureModel: ObservableObject {
     private func measureEncoder() async {
         guard !Task.isCancelled else { return }
         running = .encoder
-        let links = Article.english.links
-        // Off the main thread so the interface stays smooth while it measures.
-        encoder = await Task.detached(priority: .userInitiated) { EmbeddingClassifier()?.run(on: links) }.value
+        let result = await encode(Self.benchmarkLinks)
+        guard !Task.isCancelled else { return }
+        encoder = result
+        encoderUnavailable = result == nil
     }
 
     private func measureGenerative() async {
         running = .generative
         generativeFailed = false
         generativeProgress = 0
-        let links = Array(Article.english.links.prefix(Self.generativeLinks))
+        let links = Self.benchmarkLinks
         let clock = ContinuousClock()
         var correct = 0, total = 0.0
         for link in links {
             guard !Task.isCancelled else { return }
             do {
                 var verdict = false
-                let elapsed = try await clock.measure { verdict = try await GenerativeClassifier.isAboutSpiders(link.text) }
+                let elapsed = try await clock.measure { verdict = try await generate(link.text) }
+                guard !Task.isCancelled else { return }
                 total += elapsed.milliseconds
                 if verdict == link.relevant { correct += 1 }
                 generativeProgress += 1
             } catch {
+                guard !Task.isCancelled else { return }
                 generativeFailed = true
                 return
             }
@@ -94,13 +135,20 @@ final class MeasureModel: ObservableObject {
 
     /// Puts the measured numbers into the agent lab: the race then uses this device's real figures.
     func apply(to lab: AgentLab) {
-        if let encoder { lab.tunings[0].inference = encoder.averageMilliseconds }
-        if let generative { lab.tunings[3].inference = generative.averageMilliseconds }
+        guard !isRunning, hasResults else { return }
+        var tunings = lab.tunings
+        for (index, result) in [(0, encoder), (3, generative)] {
+            guard let result else { continue }
+            tunings[index].kind = .local
+            tunings[index].inference = result.averageMilliseconds
+            tunings[index].accuracy = result.accuracy
+            tunings[index].queue = 0
+        }
         if let fresh {
             lab.measuredNetwork = fresh.total
-            for i in lab.tunings.indices where lab.tunings[i].kind == .cloud { lab.tunings[i].network = fresh.total }
+            for i in tunings.indices where tunings[i].kind == .cloud { tunings[i].network = fresh.total }
         }
-        lab.tunings = lab.tunings.map(\.clamped)
+        lab.tunings = tunings.map(\.clamped)
         appliedToLab = true
     }
 }
@@ -122,13 +170,15 @@ struct MeasureView: View {
                         "Sem simulação: pedidos HTTPS reais a ividi.dev e modelos que correm neste aparelho a classificar as ligações do artigo.",
                         "No simulation: real HTTPS requests to ividi.dev and models running on this device labelling the article's links."))
                 controls
+                Text(prefs.text("Os dois modelos classificam os mesmos 12 termos em inglês, sem contexto. Precisão nesta amostra pequena; o tempo do encoder exclui carregar o vocabulário.", "Both models classify the same 12 English terms without context. Accuracy is for this small sample; encoder timing excludes loading the embedding."))
+                    .font(.caption).foregroundStyle(Brand.dim(scheme))
                 networkCard
                 encoderCard
                 generativeCard
                 if let summary { summaryCard(summary) }
                 Text(prefs.text(
-                    "A medição só faz pedidos HEAD a ividi.dev e só quando tocas em Medir. Nada é enviado sobre ti nem guardado fora do aparelho.",
-                    "Measuring only sends HEAD requests to ividi.dev, and only when you tap Measure. Nothing about you is sent or stored off the device."))
+                    "A medição só faz pedidos HEAD a ividi.dev e só quando tocas em Medir. Não envia o texto do artigo. Como em qualquer pedido HTTPS, o servidor recebe o endereço IP e os metadados da ligação.",
+                    "Measuring only sends HEAD requests to ividi.dev, and only when you tap Measure. It does not send the article text. As with any HTTPS request, the server receives the IP address and connection metadata."))
                     .font(.caption)
                     .foregroundStyle(Brand.faint(scheme))
             }
@@ -137,6 +187,7 @@ struct MeasureView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Brand.background(scheme).ignoresSafeArea())
+        .onAppear { if !model.isRunning { shareImage = shareCard?.image() } }
         .onChange(of: model.isRunning) { _, running in shareImage = running ? nil : shareCard?.image() }
         .onChange(of: prefs.language) { _, _ in if !model.isRunning { shareImage = shareCard?.image() } }
     }
@@ -144,7 +195,7 @@ struct MeasureView: View {
     private var controls: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 10) { buttons }
-            VStack(alignment: .leading, spacing: 10) { HStack(spacing: 10) { buttons } }
+            VStack(alignment: .leading, spacing: 10) { buttons }
         }
     }
 
@@ -168,20 +219,25 @@ struct MeasureView: View {
         VStack(alignment: .leading, spacing: 12) {
             cardTitle(prefs.text("Rede real", "Real network"), detail: "HEAD \(NetworkProbe.url.absoluteString)", symbol: "network", active: model.running == .network)
             if let fresh = model.fresh, let reused = model.reused {
-                networkBar(prefs.text("Ligação nova", "New connection"), fresh, longest: max(fresh.total, reused.total))
-                networkBar(prefs.text("Ligação reutilizada", "Reused connection"), reused, longest: max(fresh.total, reused.total))
+                networkBar(prefs.text("Primeiro pedido", "First request"), fresh, longest: max(fresh.total, reused.total))
+                networkBar(prefs.text("Pedido seguinte", "Follow-up request"), reused, longest: max(fresh.total, reused.total))
+                Text(reused.reusedConnection
+                     ? prefs.text("Todos os pedidos seguintes reutilizaram a ligação.", "All follow-up requests reused the connection.")
+                     : prefs.text("Nem todos os pedidos seguintes reutilizaram a ligação.", "Not all follow-up requests reused the connection."))
+                    .font(.caption).foregroundStyle(Brand.dim(scheme))
                 FlowLegend(items: networkSegments.map { (prefs.text($0.pt, $0.en), $0.color) })
                 Text(prefs.text(
-                    "Média de \(MeasureModel.networkRounds) ligações novas e \(MeasureModel.networkRounds) reutilizadas. O aperto de mão (DNS, TCP, TLS) custou \(fresh.handshake.milliseconds) e só se paga na ligação nova.",
-                    "Average of \(MeasureModel.networkRounds) new and \(MeasureModel.networkRounds) reused connections. The handshake (DNS, TCP, TLS) cost \(fresh.handshake.milliseconds) and is only paid on a new connection."))
+                    "Média de \(model.networkSampleCount) primeiros pedidos e \(model.networkSampleCount) seguintes. O primeiro pedido gastou \(fresh.handshake.milliseconds) em DNS/TCP/TLS. A reutilização da ligação depende do servidor e do sistema.",
+                    "Average of \(model.networkSampleCount) first and \(model.networkSampleCount) follow-up requests. The first request spent \(fresh.handshake.milliseconds) in DNS/TCP/TLS. Connection reuse depends on the server and system."))
                     .font(.caption)
                     .foregroundStyle(Brand.dim(scheme))
-            } else if model.networkFailed {
+            }
+            if model.networkFailed {
                 Label(prefs.text("Sem ligação a ividi.dev. Verifica a internet e mede outra vez.", "Could not reach ividi.dev. Check the internet and measure again."),
                       systemImage: "wifi.exclamationmark")
                     .font(.subheadline)
                     .foregroundStyle(Brand.danger)
-            } else {
+            } else if model.fresh == nil {
                 placeholder
             }
         }
@@ -198,6 +254,9 @@ struct MeasureView: View {
                     "One vector lookup and a distance per link, no text generated. Extremely fast, but it only recognises what sits near \"spider\" in word space."))
                     .font(.caption)
                     .foregroundStyle(Brand.dim(scheme))
+            } else if model.encoderUnavailable {
+                Text(prefs.text("O vocabulário inglês não está disponível neste sistema.", "The English word embedding is unavailable on this system."))
+                    .font(.subheadline)
             } else {
                 placeholder
             }
@@ -214,9 +273,9 @@ struct MeasureView: View {
                     .foregroundStyle(Brand.dim(scheme))
                     .fixedSize(horizontal: false, vertical: true)
             } else if model.running == .generative {
-                ProgressView(value: Double(model.generativeProgress), total: Double(MeasureModel.generativeLinks)) {
-                    Text(prefs.text("A decidir \(model.generativeProgress) de \(MeasureModel.generativeLinks) ligações…",
-                                    "Deciding \(model.generativeProgress) of \(MeasureModel.generativeLinks) links…"))
+                ProgressView(value: Double(model.generativeProgress), total: Double(MeasureModel.benchmarkLinks.count)) {
+                    Text(prefs.text("A decidir \(model.generativeProgress) de \(MeasureModel.benchmarkLinks.count) ligações…",
+                                    "Deciding \(model.generativeProgress) of \(MeasureModel.benchmarkLinks.count) links…"))
                         .font(.caption)
                 }
                 .tint(Brand.orange)
@@ -256,11 +315,11 @@ struct MeasureView: View {
                 .font(.system(size: 44, weight: .heavy, design: .rounded).monospacedDigit())
                 .foregroundStyle(Brand.gradient)
             Text(prefs.text(
-                "decisões do encoder local no tempo de uma única viagem nova até ao servidor (\(summary.trip.milliseconds)), antes de qualquer modelo na nuvem começar a pensar.",
-                "local encoder decisions in the time of a single new trip to the server (\(summary.trip.milliseconds)), before any cloud model even starts thinking."))
+                "decisões estimadas do encoder no tempo do primeiro pedido HTTPS (\(summary.trip.milliseconds)), incluindo trabalho do servidor web. Não mede um modelo na nuvem.",
+                "estimated encoder decisions in the time of the first HTTPS request (\(summary.trip.milliseconds)), including web-server work. This does not measure a cloud model."))
                 .font(.subheadline)
                 .foregroundStyle(Brand.dim(scheme))
-            HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
                 Button {
                     model.apply(to: lab)
                 } label: {
@@ -276,8 +335,8 @@ struct MeasureView: View {
                         .foregroundStyle(Brand.ok)
                 }
             }
-            Text(prefs.text("Põe o tempo do encoder no Ember, o do modelo generativo no Flint e a viagem medida na rede dos agentes na nuvem.",
-                            "Puts the encoder time on Ember, the generative time on Flint and the measured trip on the cloud agents' network."))
+            Text(prefs.text("Aplica tempo e precisão ao Ember e Flint medidos, como agentes locais sem fila. Copia o pedido HTTPS para a rede dos agentes na nuvem, dentro dos limites do laboratório. A corrida mantém deslocação e variação simuladas.",
+                            "Applies time and accuracy to measured Ember and Flint as local agents without a queue. Copies the HTTPS request into cloud network time within lab limits. The race retains simulated walking and jitter."))
                 .font(.caption)
                 .foregroundStyle(Brand.faint(scheme))
         }
@@ -380,9 +439,9 @@ struct MeasureView: View {
     private var shareCard: ShareCard? {
         var rows: [ShareCard.Row] = []
         if let fresh = model.fresh, let reused = model.reused {
-            rows.append(.init(colorIndex: 1, name: prefs.text("Rede · ligação nova", "Network · new connection"), detail: "DNS + TCP + TLS + HTTPS",
+            rows.append(.init(colorIndex: 1, name: prefs.text("Rede · primeiro pedido", "Network · first request"), detail: "DNS + TCP + TLS + HTTPS",
                               value: fresh.total.milliseconds, note: "ividi.dev"))
-            rows.append(.init(colorIndex: 2, name: prefs.text("Rede · ligação reutilizada", "Network · reused connection"), detail: "HTTPS",
+            rows.append(.init(colorIndex: 2, name: prefs.text("Rede · pedido seguinte", "Network · follow-up request"), detail: "HTTPS",
                               value: reused.total.milliseconds, note: "ividi.dev"))
         }
         if let run = model.encoder {
@@ -395,8 +454,8 @@ struct MeasureView: View {
         }
         guard !rows.isEmpty else { return nil }
         return ShareCard(eyebrow: prefs.text("Medição real", "Real measurement"),
-                         title: prefs.text("Local contra nuvem, medido no meu aparelho", "Local versus cloud, measured on my device"),
+                         title: prefs.text("Modelos locais e rede HTTPS", "Local models and HTTPS network"),
                          rows: rows,
-                         footnote: "Power of AI Agents")
+                         footnote: prefs.text("12 termos em inglês · sem modelo na nuvem", "12 English terms · no cloud model"))
     }
 }

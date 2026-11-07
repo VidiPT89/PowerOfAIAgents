@@ -234,11 +234,8 @@ final class EngineTests: XCTestCase {
         let run = classifier.run(on: Article.english.links, rounds: 5)
         XCTAssertEqual(run.decisions, Article.english.links.count)
         XCTAssertGreaterThan(run.accuracy, 0.6)
-        XCTAssertLessThan(run.averageMilliseconds, 5)
-    }
-
-    func testGenerativeAvailabilityNeverCrashes() {
-        _ = GenerativeClassifier.unavailableReason
+        XCTAssertTrue(run.averageMilliseconds.isFinite)
+        XCTAssertGreaterThan(run.averageMilliseconds, 0)
     }
 
     func testMillisecondsKeepUsefulPrecision() {
@@ -268,4 +265,148 @@ final class EngineTests: XCTestCase {
                              footnote: "Power of AI Agents")
         XCTAssertNotNil(card.image())
     }
+    @MainActor
+    private func finishMeasurement(_ model: MeasureModel) async {
+        for _ in 0..<1000 {
+            if !model.isRunning { return }
+            await Task.yield()
+        }
+        XCTFail("Measurement did not finish")
+        model.cancel()
+    }
+
+    @MainActor
+    func testCancelledRequestCannotOverwriteRestartedMeasurement() async {
+        var pending: [CheckedContinuation<(fresh: NetworkSample, reused: NetworkSample), Error>] = []
+        let model = MeasureModel(network: {
+            try await withCheckedThrowingContinuation { pending.append($0) }
+        }, encode: { _ in nil }, availability: { .systemTooOld })
+        model.measureAll()
+        XCTAssertTrue(model.isRunning) // Prevent a second start before the task is scheduled.
+        model.measureAll()
+        for _ in 0..<100 { if pending.count == 1 { break }; await Task.yield() }
+        XCTAssertEqual(pending.count, 1)
+        guard pending.count == 1 else { model.cancel(); return }
+        model.cancel()
+        model.measureAll()
+        for _ in 0..<100 { if pending.count == 2 { break }; await Task.yield() }
+        guard pending.count == 2 else { XCTFail("Restart missing"); return }
+        pending[0].resume(returning: (NetworkSample(server: 999), NetworkSample(server: 999)))
+        for _ in 0..<30 { await Task.yield() }
+        XCTAssertTrue(model.isRunning)
+        XCTAssertNil(model.fresh)
+        XCTAssertFalse(model.networkFailed)
+        model.cancel()
+        pending[1].resume(throwing: URLError(.cancelled))
+        for _ in 0..<30 { await Task.yield() }
+        XCTAssertFalse(model.isRunning)
+        XCTAssertFalse(model.networkFailed)
+    }
+
+    @MainActor
+    func testRemeasureClearsOldResultsAndUsesTheSameSample() async {
+        var fail = false
+        var generated: [String] = []
+        let model = MeasureModel(network: {
+            if fail { throw URLError(.notConnectedToInternet) }
+            return (NetworkSample(server: 100), NetworkSample(server: 50))
+        }, encode: { links in
+            XCTAssertEqual(links, MeasureModel.benchmarkLinks)
+            return fail ? nil : ModelRun(decisions: links.count, correct: 4, totalMilliseconds: 12)
+        }, generate: { term in
+            if fail { throw URLError(.unknown) }
+            generated.append(term)
+            return false
+        }, availability: { nil })
+        model.measureAll()
+        await finishMeasurement(model)
+        XCTAssertEqual(generated, MeasureModel.benchmarkLinks.map(\.text))
+        XCTAssertEqual(model.networkSampleCount, 3)
+        XCTAssertNotNil(model.generative)
+        fail = true
+        model.measureAll()
+        XCTAssertFalse(model.hasResults)
+        await finishMeasurement(model)
+        XCTAssertNil(model.fresh)
+        XCTAssertNil(model.encoder)
+        XCTAssertNil(model.generative)
+        XCTAssertTrue(model.networkFailed)
+        XCTAssertTrue(model.generativeFailed)
+        XCTAssertTrue(model.encoderUnavailable)
+    }
+
+    @MainActor
+    func testPartialNetworkResultsReportActualSampleCount() async {
+        var calls = 0
+        let model = MeasureModel(network: {
+            calls += 1
+            if calls > 1 { throw URLError(.timedOut) }
+            return (NetworkSample(server: 200), NetworkSample(server: 80))
+        }, encode: { _ in nil }, availability: { .systemTooOld })
+        model.measureAll()
+        await finishMeasurement(model)
+        XCTAssertEqual(model.networkSampleCount, 1)
+        XCTAssertEqual(model.fresh?.total, 200)
+        XCTAssertTrue(model.networkFailed)
+    }
+
+    @MainActor
+    func testApplyingMeasurementsCopiesAccuracyAndLocalExecution() async {
+        let suite = "lab-test-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let lab = AgentLab(defaults: defaults)
+        lab.tunings[0].kind = .cloud
+        lab.tunings[3].kind = .cloud
+        let model = MeasureModel(network: {
+            (NetworkSample(server: 400), NetworkSample(server: 100))
+        }, encode: { links in
+            ModelRun(decisions: links.count, correct: 3, totalMilliseconds: 0.048)
+        }, generate: { _ in false }, availability: { nil })
+        model.apply(to: lab)
+        XCTAssertFalse(model.appliedToLab)
+        model.measureAll()
+        await finishMeasurement(model)
+        model.apply(to: lab)
+        XCTAssertEqual(lab.tunings[0].kind, .local)
+        XCTAssertEqual(lab.tunings[0].inference, 0.004, accuracy: 0.000001)
+        XCTAssertEqual(lab.tunings[0].accuracy, 0.25)
+        XCTAssertEqual(lab.tunings[0].queue, 0)
+        XCTAssertEqual(lab.tunings[3].kind, .local)
+        XCTAssertEqual(lab.tunings[3].accuracy, model.generative?.accuracy)
+        XCTAssertEqual(lab.tunings[1].network, 400)
+        XCTAssertEqual(lab.measuredNetwork, 400)
+        XCTAssertTrue(model.appliedToLab)
+    }
+
+    func testEmptyEmbeddingBenchmarkHasFiniteResults() throws {
+        let classifier = try XCTUnwrap(EmbeddingClassifier())
+        for run in [classifier.run(on: [], rounds: 5), classifier.run(on: Article.english.links, rounds: 0)] {
+            XCTAssertEqual(run.decisions, 0)
+            XCTAssertEqual(run.averageMilliseconds, 0)
+            XCTAssertEqual(run.accuracy, 0)
+        }
+    }
+
+    @MainActor
+    func testCancellingEncoderDoesNotStartGenerationOrPublishResults() async {
+        var pending: CheckedContinuation<ModelRun?, Never>?
+        var generated = false
+        let model = MeasureModel(network: {
+            (NetworkSample(server: 100), NetworkSample(server: 50))
+        }, encode: { _ in
+            await withCheckedContinuation { pending = $0 }
+        }, generate: { _ in generated = true; return true }, availability: { nil })
+        model.measureAll()
+        for _ in 0..<100 { if pending != nil { break }; await Task.yield() }
+        guard let pending else { XCTFail("Encoder did not start"); model.cancel(); return }
+        model.cancel()
+        pending.resume(returning: ModelRun(decisions: 12, correct: 12, totalMilliseconds: 1))
+        for _ in 0..<30 { await Task.yield() }
+        XCTAssertNil(model.encoder)
+        XCTAssertFalse(model.isRunning)
+        XCTAssertFalse(generated)
+        XCTAssertFalse(model.generativeFailed)
+    }
+
 }

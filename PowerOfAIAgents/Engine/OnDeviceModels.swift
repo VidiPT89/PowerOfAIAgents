@@ -43,6 +43,9 @@ struct EmbeddingClassifier {
 
     /// Decides every link `rounds` times so the timing is stable even when one decision takes microseconds.
     func run(on links: [ArticleLink], rounds: Int = 40) -> ModelRun {
+        guard rounds > 0, !links.isEmpty else {
+            return ModelRun(decisions: 0, correct: 0, totalMilliseconds: 0)
+        }
         let clock = ContinuousClock()
         var correct = 0
         let elapsed = clock.measure {

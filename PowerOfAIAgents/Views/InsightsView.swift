@@ -120,9 +120,9 @@ struct InsightsView: View {
             result(prefs.text("Só nuvem", "Cloud only"), cloudOnly.milliseconds, Brand.cloud)
             result(prefs.text("Cascata", "Cascade"), mixed.milliseconds, Brand.orange)
             if faster {
-                result(prefs.text("Mais rápido", "Faster"), String(format: "×%.1f", cloudOnly / max(mixed, 1)), Brand.ok)
+                result(prefs.text("Mais rápido", "Faster"), String(format: "×%.1f", cloudOnly / max(mixed, 0.000001)), Brand.ok)
             } else {
-                result(prefs.text("Mais lento", "Slower"), String(format: "×%.1f", mixed / max(cloudOnly, 1)), Brand.danger)
+                result(prefs.text("Mais lento", "Slower"), String(format: "×%.1f", mixed / max(cloudOnly, 0.000001)), Brand.danger)
             }
         }
     }

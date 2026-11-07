@@ -87,7 +87,7 @@ struct AgentTuning: Codable, Equatable, Sendable {
     static let inferenceRange = 0.001...2500.0
     static let networkRange = 20.0...1200.0
     static let queueRange = 0.0...800.0
-    static let accuracyRange = 0.5...1.0
+    static let accuracyRange = 0.0...1.0
 
     init(kind: AgentKind, inference: Double, network: Double, queue: Double, accuracy: Double) {
         self.kind = kind

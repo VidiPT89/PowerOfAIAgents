@@ -68,12 +68,12 @@ struct NetworkSample: Sendable, Equatable {
     }
 }
 
-/// Real requests to ividi.dev: a brand-new connection pays DNS, TCP and TLS; a reused one does not.
+/// Real requests to ividi.dev, with connection reuse reported by the system.
 enum NetworkProbe {
     /// The final address, so the request is not redirected (the root redirects to a language).
     static let url = URL(string: "https://ividi.dev/en")!
 
-    /// One request on a new connection, then one more on that same connection.
+    /// A fresh session with two sequential requests. The server may close the connection.
     static func measurePair() async throws -> (fresh: NetworkSample, reused: NetworkSample) {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil
@@ -91,7 +91,7 @@ enum NetworkProbe {
         request.httpMethod = "HEAD"
         let collector = MetricsCollector()
         let (_, response) = try await session.data(for: request, delegate: collector)
-        guard let http = response as? HTTPURLResponse, http.statusCode < 500 else { throw URLError(.badServerResponse) }
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
         // The metrics callback can land a moment after the response.
         for _ in 0..<20 where collector.metrics == nil { try await Task.sleep(for: .milliseconds(25)) }
         let transactions = (collector.metrics?.transactionMetrics ?? [])

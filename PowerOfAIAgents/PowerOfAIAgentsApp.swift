@@ -30,7 +30,9 @@ struct RootView: View {
     var body: some View {
         ZStack {
             if splashDone || !prefs.showSplash {
-                MainView().transition(.opacity)
+                MainView()
+                    .onAppear { splashDone = true }
+                    .transition(.opacity)
             } else {
                 SplashView { withAnimation(.easeInOut(duration: 0.5)) { splashDone = true } }
                     .transition(.opacity)
@@ -88,7 +90,13 @@ struct MainView: View {
             if phase == .background {
                 race.pause()
                 swarm.pause()
+                measure.cancel()
             }
+        }
+        .onDisappear {
+            race.pause()
+            swarm.pause()
+            measure.cancel()
         }
         .onChange(of: section) { _, new in
             if new != .race { race.pause() }
