@@ -274,7 +274,9 @@ struct MeasureView: View {
                     .font(.caption)
                     .foregroundStyle(Brand.dim(scheme))
             } else if model.encoderUnavailable {
-                Text(prefs.text("O vocabulário em \(languageName(model.sampleLanguage)) não está disponível neste sistema.", "The \(languageName(model.sampleLanguage)) word embedding is unavailable on this system."))
+                Text(model.sampleLanguage == .portuguese
+                     ? prefs.text("O vocabulário em português não está instalado neste sistema. Muda o idioma para inglês nas Definições e mede outra vez.", "The Portuguese word embedding is not installed on this system. Switch the language to English in Settings and measure again.")
+                     : prefs.text("O vocabulário em inglês não está disponível neste sistema.", "The English word embedding is unavailable on this system."))
                     .font(.subheadline)
             } else {
                 placeholder

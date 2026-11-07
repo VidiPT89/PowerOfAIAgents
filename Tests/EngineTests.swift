@@ -472,7 +472,10 @@ final class EngineTests: XCTestCase {
     }
 
     func testPortugueseEncoderSplitsHyphenatedCompounds() throws {
-        let classifier = try XCTUnwrap(EmbeddingClassifier(language: .portuguese), "Portuguese word embedding missing on this system")
+        // The Portuguese embedding is a system asset that some machines (such as CI runners) do not have.
+        guard let classifier = EmbeddingClassifier(language: .portuguese) else {
+            throw XCTSkip("Portuguese word embedding is not installed on this system")
+        }
         XCTAssertTrue(classifier.isAboutSpiders("aranha-lobo"))
         XCTAssertTrue(classifier.isAboutSpiders("aranhas-saltadoras"))
         XCTAssertTrue(classifier.isAboutSpiders("seda de aranha"))
