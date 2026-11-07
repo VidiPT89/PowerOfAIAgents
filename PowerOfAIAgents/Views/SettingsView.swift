@@ -42,6 +42,11 @@ struct SettingsView: View {
                     Text("Power of AI Agents").font(.system(.headline, design: .rounded, weight: .bold))
                     Text(versionText).font(.caption.monospaced()).foregroundStyle(Brand.faint(scheme))
                     CreditsView()
+                    Link(destination: Self.privacyURL) {
+                        Label(prefs.text("Política de privacidade", "Privacy policy"), systemImage: "hand.raised")
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .tint(Brand.accent(scheme))
                 }
                 .frame(maxWidth: .infinity)
                 .card(padding: 20)
@@ -52,6 +57,8 @@ struct SettingsView: View {
         }
         .background(Brand.background(scheme).ignoresSafeArea())
     }
+
+    static let privacyURL = URL(string: "https://github.com/VidiPT89/PowerOfAIAgents/blob/main/PRIVACY.md")!
 
     private var versionText: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"

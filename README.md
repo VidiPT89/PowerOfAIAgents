@@ -95,6 +95,10 @@ xcodebuild -project PowerOfAIAgents.xcodeproj -scheme PowerOfAIAgents -destinati
 
 The unit tests cover the race engine (determinism regardless of frame rate, verdict counters, local versus cloud throughput), the cascade maths, the swarm engine (every layer built exactly once, more agents finishing faster, prediction equal to a frame-by-frame run), the agent lab (tuning, clamping, saving, the log-scale sliders and the decision estimate), the real measurement (network timestamps split per phase, redirects keeping their handshake, the on-device encoder in both languages, cancellation and restart isolation, partial failures (including applying model results with no network), the saved measured-network preset, matched model samples in the chosen language, applying measured accuracy, and the share image), the network presets, the article parser and text layout (every link placed, punctuation kept next to its link) and the parity of links between the Portuguese and English articles. The same checks run on GitHub Actions for every push.
 
+## 🔒 Privacy
+
+No personal data is collected. See the [privacy policy](PRIVACY.md).
+
 ## 📄 License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for details.
