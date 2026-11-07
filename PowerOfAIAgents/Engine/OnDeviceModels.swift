@@ -18,21 +18,27 @@ struct ModelRun: Sendable, Equatable {
 
 /// A word-embedding encoder that ships with the system: one vector lookup and a distance, no text generation.
 struct EmbeddingClassifier {
-    /// Only the concept itself, so words from the article never match by being listed here.
-    static let anchors = ["spider", "arachnid"]
     static let threshold = 0.8
 
-    private let embedding: NLEmbedding
+    /// Only the concept itself, so words from the article never match by being listed here.
+    static func anchors(_ language: AppLanguage) -> [String] {
+        language == .portuguese ? ["aranha", "aracnídeo"] : ["spider", "arachnid"]
+    }
 
-    init?() {
-        guard let embedding = NLEmbedding.wordEmbedding(for: .english) else { return nil }
+    private let embedding: NLEmbedding
+    private let anchors: [String]
+
+    init?(language: AppLanguage = .english) {
+        guard let embedding = NLEmbedding.wordEmbedding(for: language == .portuguese ? .portuguese : .english) else { return nil }
         self.embedding = embedding
+        anchors = Self.anchors(language)
     }
 
     /// Smallest distance between any word of the term and an anchor; 2 when the words are unknown.
+    /// Hyphenated compounds ("aranha-lobo") are split, because the embedding only knows single words.
     func distance(_ term: String) -> Double {
-        term.lowercased().split(separator: " ").compactMap { word -> Double? in
-            Self.anchors.compactMap { anchor -> Double? in
+        term.lowercased().split { $0 == " " || $0 == "-" }.compactMap { word -> Double? in
+            anchors.compactMap { anchor -> Double? in
                 let d = embedding.distance(between: String(word), and: anchor)
                 return d.isFinite && d < 2 ? d : nil
             }.min()
@@ -88,12 +94,19 @@ enum GenerativeClassifier {
         #endif
     }
 
+    static func instructions(_ language: AppLanguage) -> String {
+        language == .portuguese
+            ? "Classificas termos isolados, em português de Portugal, tirados de um artigo sobre um jardim. Decide se cada termo é sobre aranhas: um tipo de aranha, uma parte do corpo de uma aranha, ou algo que as aranhas fazem ou usam."
+            : "You label single terms taken from an article about a garden. Decide whether each term is about spiders: a kind of spider, a part of a spider's body, or something spiders make or use."
+    }
+
     /// A fresh session per link, so every decision pays its own full cost.
-    static func isAboutSpiders(_ term: String) async throws -> Bool {
+    static func isAboutSpiders(_ term: String, language: AppLanguage = .english) async throws -> Bool {
         #if canImport(FoundationModels)
         if #available(iOS 26.0, macOS 26.0, *) {
-            let session = LanguageModelSession(instructions: "You label single terms taken from an article about a garden. Decide whether each term is about spiders: a kind of spider, a part of a spider's body, or something spiders make or use.")
-            let response = try await session.respond(to: "Term: \(term)", generating: SpiderVerdict.self)
+            let session = LanguageModelSession(instructions: instructions(language))
+            let prompt = language == .portuguese ? "Termo: \(term)" : "Term: \(term)"
+            let response = try await session.respond(to: prompt, generating: SpiderVerdict.self)
             return response.content.aboutSpiders
         }
         #endif

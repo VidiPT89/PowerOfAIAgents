@@ -282,7 +282,7 @@ final class EngineTests: XCTestCase {
         var pending: [CheckedContinuation<(fresh: NetworkSample, reused: NetworkSample), Error>] = []
         let model = MeasureModel(network: {
             try await withCheckedThrowingContinuation { pending.append($0) }
-        }, encode: { _ in nil }, availability: { .systemTooOld })
+        }, encode: { _, _ in nil }, availability: { .systemTooOld })
         model.measureAll()
         XCTAssertTrue(model.isRunning) // Prevent a second start before the task is scheduled.
         model.measureAll()
@@ -312,17 +312,17 @@ final class EngineTests: XCTestCase {
         let model = MeasureModel(network: {
             if fail { throw URLError(.notConnectedToInternet) }
             return (NetworkSample(server: 100), NetworkSample(server: 50))
-        }, encode: { links in
-            XCTAssertEqual(links, MeasureModel.benchmarkLinks)
+        }, encode: { links, _ in
+            XCTAssertEqual(links, MeasureModel.benchmarkLinks(.english))
             return fail ? nil : ModelRun(decisions: links.count, correct: 4, totalMilliseconds: 12)
-        }, generate: { term in
+        }, generate: { term, _ in
             if fail { throw URLError(.unknown) }
             generated.append(term)
             return false
         }, availability: { nil })
         model.measureAll()
         await finishMeasurement(model)
-        XCTAssertEqual(generated, MeasureModel.benchmarkLinks.map(\.text))
+        XCTAssertEqual(generated, MeasureModel.benchmarkLinks(.english).map(\.text))
         XCTAssertEqual(model.networkSampleCount, 3)
         XCTAssertNotNil(model.generative)
         fail = true
@@ -344,7 +344,7 @@ final class EngineTests: XCTestCase {
             calls += 1
             if calls > 1 { throw URLError(.timedOut) }
             return (NetworkSample(server: 200), NetworkSample(server: 80))
-        }, encode: { _ in nil }, availability: { .systemTooOld })
+        }, encode: { _, _ in nil }, availability: { .systemTooOld })
         model.measureAll()
         await finishMeasurement(model)
         XCTAssertEqual(model.networkSampleCount, 1)
@@ -362,9 +362,9 @@ final class EngineTests: XCTestCase {
         lab.tunings[3].kind = .cloud
         let model = MeasureModel(network: {
             (NetworkSample(server: 400), NetworkSample(server: 100))
-        }, encode: { links in
+        }, encode: { links, _ in
             ModelRun(decisions: links.count, correct: 3, totalMilliseconds: 0.048)
-        }, generate: { _ in false }, availability: { nil })
+        }, generate: { _, _ in false }, availability: { nil })
         model.apply(to: lab)
         XCTAssertFalse(model.appliedToLab)
         model.measureAll()
@@ -396,9 +396,9 @@ final class EngineTests: XCTestCase {
         var generated = false
         let model = MeasureModel(network: {
             (NetworkSample(server: 100), NetworkSample(server: 50))
-        }, encode: { _ in
+        }, encode: { _, _ in
             await withCheckedContinuation { pending = $0 }
-        }, generate: { _ in generated = true; return true }, availability: { nil })
+        }, generate: { _, _ in generated = true; return true }, availability: { nil })
         model.measureAll()
         for _ in 0..<100 { if pending != nil { break }; await Task.yield() }
         guard let pending else { XCTFail("Encoder did not start"); model.cancel(); return }
@@ -457,7 +457,7 @@ final class EngineTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let lab = AgentLab(defaults: defaults)
         let model = MeasureModel(network: { throw URLError(.notConnectedToInternet) },
-                                 encode: { links in ModelRun(decisions: links.count, correct: links.count, totalMilliseconds: 0.12) },
+                                 encode: { links, _ in ModelRun(decisions: links.count, correct: links.count, totalMilliseconds: 0.12) },
                                  availability: { .systemTooOld })
         model.measureAll()
         await finishMeasurement(model)
@@ -469,5 +469,56 @@ final class EngineTests: XCTestCase {
         XCTAssertEqual(lab.tunings[0].accuracy, 1)
         XCTAssertEqual(lab.tunings[1].network, AgentTuning.defaults[1].network)
         XCTAssertNil(lab.measuredNetwork)
+    }
+
+    func testPortugueseEncoderSplitsHyphenatedCompounds() throws {
+        let classifier = try XCTUnwrap(EmbeddingClassifier(language: .portuguese), "Portuguese word embedding missing on this system")
+        XCTAssertTrue(classifier.isAboutSpiders("aranha-lobo"))
+        XCTAssertTrue(classifier.isAboutSpiders("aranhas-saltadoras"))
+        XCTAssertTrue(classifier.isAboutSpiders("seda de aranha"))
+        XCTAssertFalse(classifier.isAboutSpiders("chuva"))
+        XCTAssertFalse(classifier.isAboutSpiders("aço"))
+        let run = classifier.run(on: MeasureModel.benchmarkLinks(.portuguese), rounds: 5)
+        XCTAssertEqual(run.decisions, MeasureModel.benchmarkSize)
+        XCTAssertGreaterThan(run.accuracy, 0.6)
+        XCTAssertGreaterThan(run.averageMilliseconds, 0)
+    }
+
+    func testBenchmarkTermsFollowTheLanguageWithTheSameAnswers() {
+        let english = MeasureModel.benchmarkLinks(.english)
+        let portuguese = MeasureModel.benchmarkLinks(.portuguese)
+        XCTAssertEqual(english.count, MeasureModel.benchmarkSize)
+        XCTAssertEqual(portuguese.count, MeasureModel.benchmarkSize)
+        XCTAssertEqual(english.map(\.relevant), portuguese.map(\.relevant))
+        XCTAssertEqual(portuguese.first?.text, "aranha-lobo")
+        XCTAssertEqual(english.first?.text, "wolf spider")
+    }
+
+    @MainActor
+    func testMeasuringInPortugueseUsesPortugueseTermsAndRecordsTheLanguage() async {
+        var encoded: [AppLanguage] = []
+        var generated: [String] = []
+        let model = MeasureModel(network: {
+            (NetworkSample(server: 100), NetworkSample(server: 50))
+        }, encode: { links, language in
+            encoded.append(language)
+            XCTAssertEqual(links, MeasureModel.benchmarkLinks(.portuguese))
+            return ModelRun(decisions: links.count, correct: 9, totalMilliseconds: 0.05)
+        }, generate: { term, language in
+            XCTAssertEqual(language, .portuguese)
+            generated.append(term)
+            return true
+        }, availability: { nil })
+        model.measureAll(language: .portuguese)
+        await finishMeasurement(model)
+        XCTAssertEqual(encoded, [.portuguese])
+        XCTAssertEqual(generated, MeasureModel.benchmarkLinks(.portuguese).map(\.text))
+        XCTAssertEqual(model.sampleLanguage, .portuguese)
+        XCTAssertEqual(model.encoder?.accuracy, 0.75)
+    }
+
+    func testGenerativeInstructionsMatchTheLanguage() {
+        XCTAssertTrue(GenerativeClassifier.instructions(.portuguese).contains("aranhas"))
+        XCTAssertTrue(GenerativeClassifier.instructions(.english).contains("spiders"))
     }
 }

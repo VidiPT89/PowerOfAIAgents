@@ -7,8 +7,13 @@ final class MeasureModel: ObservableObject {
 
     /// Request pairs measured per run; reuse is verified by system metrics.
     static let networkRounds = 3
-    /// Identical bounded sample for both models.
-    static let benchmarkLinks = Array(Article.english.links.prefix(12))
+    /// Terms per benchmark, identical for both models.
+    nonisolated static let benchmarkSize = 12
+
+    /// The first links of the article in the app's language (both articles list the same links in the same order).
+    nonisolated static func benchmarkLinks(_ language: AppLanguage) -> [ArticleLink] {
+        Array(Article.sample(language).links.prefix(benchmarkSize))
+    }
 
     @Published private(set) var running: Step?
     @Published private(set) var fresh: NetworkSample?
@@ -22,18 +27,20 @@ final class MeasureModel: ObservableObject {
     @Published private(set) var appliedToLab = false
     @Published private(set) var networkSampleCount = 0
     @Published private(set) var encoderUnavailable = false
+    /// Language of the terms behind the current results.
+    @Published private(set) var sampleLanguage: AppLanguage = .english
     private var job: Task<Void, Never>?
     private let network: () async throws -> (fresh: NetworkSample, reused: NetworkSample)
-    private let encode: ([ArticleLink]) async -> ModelRun?
-    private let generate: (String) async throws -> Bool
+    private let encode: ([ArticleLink], AppLanguage) async -> ModelRun?
+    private let generate: (String, AppLanguage) async throws -> Bool
     private let availability: () -> GenerativeClassifier.Unavailable?
 
     init(
         network: @escaping () async throws -> (fresh: NetworkSample, reused: NetworkSample) = { try await NetworkProbe.measurePair() },
-        encode: @escaping ([ArticleLink]) async -> ModelRun? = { links in
-            await Task.detached(priority: .userInitiated) { EmbeddingClassifier()?.run(on: links) }.value
+        encode: @escaping ([ArticleLink], AppLanguage) async -> ModelRun? = { links, language in
+            await Task.detached(priority: .userInitiated) { EmbeddingClassifier(language: language)?.run(on: links) }.value
         },
-        generate: @escaping (String) async throws -> Bool = { try await GenerativeClassifier.isAboutSpiders($0) },
+        generate: @escaping (String, AppLanguage) async throws -> Bool = { try await GenerativeClassifier.isAboutSpiders($0, language: $1) },
         availability: @escaping () -> GenerativeClassifier.Unavailable? = { GenerativeClassifier.unavailableReason }
     ) {
         self.network = network
@@ -45,8 +52,9 @@ final class MeasureModel: ObservableObject {
     var isRunning: Bool { running != nil }
     var hasResults: Bool { fresh != nil || encoder != nil || generative != nil }
 
-    func measureAll() {
+    func measureAll(language: AppLanguage = .english) {
         guard !isRunning else { return }
+        sampleLanguage = language
         appliedToLab = false
         fresh = nil
         reused = nil
@@ -102,7 +110,7 @@ final class MeasureModel: ObservableObject {
     private func measureEncoder() async {
         guard !Task.isCancelled else { return }
         running = .encoder
-        let result = await encode(Self.benchmarkLinks)
+        let result = await encode(Self.benchmarkLinks(sampleLanguage), sampleLanguage)
         guard !Task.isCancelled else { return }
         encoder = result
         encoderUnavailable = result == nil
@@ -112,14 +120,15 @@ final class MeasureModel: ObservableObject {
         running = .generative
         generativeFailed = false
         generativeProgress = 0
-        let links = Self.benchmarkLinks
+        let links = Self.benchmarkLinks(sampleLanguage)
+        let language = sampleLanguage
         let clock = ContinuousClock()
         var correct = 0, total = 0.0
         for link in links {
             guard !Task.isCancelled else { return }
             do {
                 var verdict = false
-                let elapsed = try await clock.measure { verdict = try await generate(link.text) }
+                let elapsed = try await clock.measure { verdict = try await generate(link.text, language) }
                 guard !Task.isCancelled else { return }
                 total += elapsed.milliseconds
                 if verdict == link.relevant { correct += 1 }
@@ -170,8 +179,15 @@ struct MeasureView: View {
                         "Sem simulação: pedidos HTTPS reais a ividi.dev e modelos que correm neste aparelho a classificar as ligações do artigo.",
                         "No simulation: real HTTPS requests to ividi.dev and models running on this device labelling the article's links."))
                 controls
-                Text(prefs.text("Os dois modelos classificam os mesmos 12 termos em inglês, sem contexto. Precisão nesta amostra pequena; o tempo do encoder exclui carregar o vocabulário.", "Both models classify the same 12 English terms without context. Accuracy is for this small sample; encoder timing excludes loading the embedding."))
+                Text(prefs.text("Os dois modelos classificam os mesmos 12 termos do artigo, sem contexto, no idioma da app (agora: \(languageName(prefs.language))). Precisão nesta amostra pequena; o tempo do encoder exclui carregar o vocabulário.", "Both models classify the same 12 terms from the article without context, in the app's language (now: \(languageName(prefs.language))). Accuracy is for this small sample; encoder timing excludes loading the embedding."))
                     .font(.caption).foregroundStyle(Brand.dim(scheme))
+                if model.hasResults, !model.isRunning, model.sampleLanguage != prefs.language {
+                    Label(prefs.text("Os resultados abaixo usaram os termos em \(languageName(model.sampleLanguage)). Mede outra vez para usar \(languageName(prefs.language)).",
+                                     "The results below used the \(languageName(model.sampleLanguage)) terms. Measure again to use \(languageName(prefs.language))."),
+                          systemImage: "character.bubble")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Brand.accent(scheme))
+                }
                 networkCard
                 encoderCard
                 generativeCard
@@ -202,7 +218,7 @@ struct MeasureView: View {
 
     @ViewBuilder private var buttons: some View {
         Button {
-            model.isRunning ? model.cancel() : model.measureAll()
+            model.isRunning ? model.cancel() : model.measureAll(language: prefs.language)
         } label: {
             Label(model.isRunning ? prefs.text("Parar", "Stop") : (model.hasResults ? prefs.text("Medir outra vez", "Measure again") : prefs.text("Medir", "Measure")),
                   systemImage: model.isRunning ? "stop.fill" : "stopwatch")
@@ -253,12 +269,12 @@ struct MeasureView: View {
             if let run = model.encoder {
                 modelStats(run)
                 Text(prefs.text(
-                    "Uma pesquisa de vetor e uma distância por ligação, sem gerar texto. Rapidíssimo, mas só reconhece o que está perto de \"spider\" no espaço das palavras.",
-                    "One vector lookup and a distance per link, no text generated. Extremely fast, but it only recognises what sits near \"spider\" in word space."))
+                    "Uma pesquisa de vetor e uma distância por ligação, sem gerar texto. Rapidíssimo, mas só reconhece o que está perto de \"\(anchor)\" no espaço das palavras.",
+                    "One vector lookup and a distance per link, no text generated. Extremely fast, but it only recognises what sits near \"\(anchor)\" in word space."))
                     .font(.caption)
                     .foregroundStyle(Brand.dim(scheme))
             } else if model.encoderUnavailable {
-                Text(prefs.text("O vocabulário inglês não está disponível neste sistema.", "The English word embedding is unavailable on this system."))
+                Text(prefs.text("O vocabulário em \(languageName(model.sampleLanguage)) não está disponível neste sistema.", "The \(languageName(model.sampleLanguage)) word embedding is unavailable on this system."))
                     .font(.subheadline)
             } else {
                 placeholder
@@ -276,9 +292,9 @@ struct MeasureView: View {
                     .foregroundStyle(Brand.dim(scheme))
                     .fixedSize(horizontal: false, vertical: true)
             } else if model.running == .generative {
-                ProgressView(value: Double(model.generativeProgress), total: Double(MeasureModel.benchmarkLinks.count)) {
-                    Text(prefs.text("A decidir \(model.generativeProgress) de \(MeasureModel.benchmarkLinks.count) ligações…",
-                                    "Deciding \(model.generativeProgress) of \(MeasureModel.benchmarkLinks.count) links…"))
+                ProgressView(value: Double(model.generativeProgress), total: Double(MeasureModel.benchmarkSize)) {
+                    Text(prefs.text("A decidir \(model.generativeProgress) de \(MeasureModel.benchmarkSize) ligações…",
+                                    "Deciding \(model.generativeProgress) of \(MeasureModel.benchmarkSize) links…"))
                         .font(.caption)
                 }
                 .tint(Brand.orange)
@@ -432,6 +448,14 @@ struct MeasureView: View {
             .foregroundStyle(Brand.faint(scheme))
     }
 
+    /// "português" / "inglês", or "Portuguese" / "English", in the app's language.
+    private func languageName(_ language: AppLanguage) -> String {
+        language == .portuguese ? prefs.text("português", "Portuguese") : prefs.text("inglês", "English")
+    }
+
+    /// The word the encoder compares every term with, in the language that was measured.
+    private var anchor: String { EmbeddingClassifier.anchors(model.sampleLanguage)[0] }
+
     private func unavailableText(_ reason: GenerativeClassifier.Unavailable) -> String {
         switch reason {
         case .systemTooOld: prefs.text("Precisa de iOS 26 ou macOS 26 com Apple Intelligence.", "Needs iOS 26 or macOS 26 with Apple Intelligence.")
@@ -465,6 +489,6 @@ struct MeasureView: View {
         return ShareCard(eyebrow: prefs.text("Medição real", "Real measurement"),
                          title: prefs.text("Modelos locais e rede HTTPS", "Local models and HTTPS network"),
                          rows: rows,
-                         footnote: prefs.text("12 termos em inglês · sem modelo na nuvem", "12 English terms · no cloud model"))
+                         footnote: prefs.text("12 termos em \(languageName(model.sampleLanguage)) · sem modelo na nuvem", "12 \(languageName(model.sampleLanguage)) terms · no cloud model"))
     }
 }
