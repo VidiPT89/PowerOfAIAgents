@@ -475,14 +475,18 @@ enum SpiderBot {
                      with: .color(.black.opacity(scheme == .dark ? 0.35 : 0.12)))
         // Legs
         for i in 0..<8 {
-            let side: Double = i < 4 ? -1 : 1
-            let k = Double(i % 4)
-            let baseAngle = side < 0 ? (.pi - (-0.75 + k * 0.5)) : (-0.75 + k * 0.5)
-            let gait = walking ? sin(time * 18 + Double(i) * .pi / 2 + (i < 4 ? 0 : .pi / 4)) : sin(time * 2 + Double(i)) * 0.15
-            let angle = baseAngle + gait * 0.18
-            let hip = CGPoint(x: c.x + cos(angle) * body * 0.9, y: c.y + sin(angle) * body * 0.75)
-            let knee = CGPoint(x: c.x + cos(angle) * size * 0.32, y: c.y + sin(angle) * size * 0.22 - size * 0.16 - gait * size * 0.03)
-            let foot = CGPoint(x: c.x + cos(angle) * size * 0.48, y: c.y + sin(angle) * size * 0.3 + size * 0.06)
+            // Explicit CGFloat steps keep older Swift compilers within their type-checking budget.
+            let spread: CGFloat = -0.75 + CGFloat(i % 4) * 0.5
+            let baseAngle: CGFloat = i < 4 ? .pi - spread : spread
+            let phase: Double = Double(i) * .pi / 2 + (i < 4 ? 0 : .pi / 4)
+            let gait = CGFloat(walking ? sin(time * 18 + phase) : sin(time * 2 + Double(i)) * 0.15)
+            let angle: CGFloat = baseAngle + gait * 0.18
+            let dx: CGFloat = cos(angle)
+            let dy: CGFloat = sin(angle)
+            let hip = CGPoint(x: c.x + dx * body * 0.9, y: c.y + dy * body * 0.75)
+            let kneeLift: CGFloat = size * 0.16 + gait * size * 0.03
+            let knee = CGPoint(x: c.x + dx * size * 0.32, y: c.y + dy * size * 0.22 - kneeLift)
+            let foot = CGPoint(x: c.x + dx * size * 0.48, y: c.y + dy * size * 0.3 + size * 0.06)
             var upper = Path(); upper.move(to: hip); upper.addLine(to: knee)
             var lower = Path(); lower.move(to: knee); lower.addLine(to: foot)
             context.stroke(upper, with: .color(color), style: StrokeStyle(lineWidth: size * 0.045, lineCap: .round))
