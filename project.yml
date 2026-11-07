@@ -1,0 +1,60 @@
+name: PowerOfAIAgents
+options:
+  bundleIdPrefix: dev.ividi
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    MARKETING_VERSION: '1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    CODE_SIGN_STYLE: Automatic
+settingGroups:
+  app:
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: Power of AI Agents
+    PRODUCT_NAME: PowerOfAIAgents
+    PRODUCT_MODULE_NAME: PowerOfAIAgents
+    PRODUCT_BUNDLE_IDENTIFIER: dev.ividi.powerofaiagents
+    INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+    INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+targets:
+  PowerOfAIAgents:
+    type: application
+    platform: iOS
+    deploymentTarget: '17.0'
+    sources: [PowerOfAIAgents]
+    settings:
+      groups: [app]
+      base:
+        TARGETED_DEVICE_FAMILY: '1,2'
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+  PowerOfAIAgents-macOS:
+    type: application
+    platform: macOS
+    deploymentTarget: '14.0'
+    sources: [PowerOfAIAgents]
+    settings:
+      groups: [app]
+      base:
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
+    scheme:
+      testTargets: [PowerOfAIAgentsTests]
+  PowerOfAIAgentsTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: '14.0'
+    sources: [Tests]
+    dependencies:
+      - target: PowerOfAIAgents-macOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.ividi.powerofaiagents.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/PowerOfAIAgents.app/Contents/MacOS/PowerOfAIAgents
+        BUNDLE_LOADER: $(TEST_HOST)
