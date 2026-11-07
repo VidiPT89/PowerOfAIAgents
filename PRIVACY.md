@@ -1,10 +1,10 @@
 # Privacy Policy
 
-**Power of AI Agents** · Last updated: 7 November 2026
+**PowerOfAIAgents** · Last updated: 7 November 2026
 
 [Português](#política-de-privacidade)
 
-Power of AI Agents does not collect personal data. There is no account, no analytics, no advertising and no tracking.
+PowerOfAIAgents does not collect personal data. There is no account, no analytics, no advertising and no tracking.
 
 ## What stays on your device
 
@@ -35,9 +35,9 @@ David Arsénio Martins · [ividi.dev](https://ividi.dev/) · [github.com/VidiPT8
 
 # Política de privacidade
 
-**Power of AI Agents** · Última atualização: 7 de novembro de 2026
+**PowerOfAIAgents** · Última atualização: 7 de novembro de 2026
 
-A Power of AI Agents não recolhe dados pessoais. Não há conta, estatísticas, publicidade nem rastreamento.
+A PowerOfAIAgents não recolhe dados pessoais. Não há conta, estatísticas, publicidade nem rastreamento.
 
 ## O que fica no teu aparelho
 

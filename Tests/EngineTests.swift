@@ -264,7 +264,7 @@ final class EngineTests: XCTestCase {
     func testShareCardRendersAnImage() {
         let card = ShareCard(eyebrow: "Test", title: "Title",
                              rows: [.init(colorIndex: 0, name: "Ember", detail: "local", value: "12", note: "34 ms")],
-                             footnote: "Power of AI Agents")
+                             footnote: "PowerOfAIAgents")
         XCTAssertNotNil(card.image())
     }
     @MainActor

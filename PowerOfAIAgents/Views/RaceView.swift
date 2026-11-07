@@ -219,7 +219,7 @@ struct RaceView: View {
         return ShareCard(eyebrow: prefs.text("Corrida de agentes", "Agent race"),
                          title: prefs.text("Quatro agentes, uma página, \(Int(engine.duration)) segundos", "Four agents, one page, \(Int(engine.duration)) seconds"),
                          rows: rows,
-                         footnote: prefs.text("Simulação ilustrativa · Power of AI Agents", "Illustrative simulation · Power of AI Agents"))
+                         footnote: prefs.text("Simulação ilustrativa · PowerOfAIAgents", "Illustrative simulation · PowerOfAIAgents"))
     }
 
     private var panelHeight: CGFloat {

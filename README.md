@@ -1,15 +1,15 @@
 <p align="center">
-  <img src="docs/logo.png" alt="Power of AI Agents logo" width="128">
+  <img src="docs/logo.png" alt="PowerOfAIAgents logo" width="128">
 </p>
 
-# ⚡ Power of AI Agents
+# ⚡ PowerOfAIAgents
 
 > Native iOS & macOS app that shows, in real time, why small local AI models can outpace cloud APIs, and how a swarm of parallel agents builds an interface layer by layer. Built with SwiftUI.
 
 [Report Bug](https://github.com/VidiPT89/PowerOfAIAgents/issues) · [Request Feature](https://github.com/VidiPT89/PowerOfAIAgents/issues)
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Power of AI Agents demo: intro, agent race, tuning agents in the agent lab, the tuned race, real measurement applied to the race, agent swarm and latency anatomy on iPhone" width="320">
+  <img src="docs/demo.gif" alt="PowerOfAIAgents demo: intro, agent race, tuning agents in the agent lab, the tuned race, real measurement applied to the race, agent swarm and latency anatomy on iPhone" width="320">
 </p>
 
 ## ✨ Features

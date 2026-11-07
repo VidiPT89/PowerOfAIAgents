@@ -7,7 +7,7 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                ScreenHeader(eyebrow: "Power of AI Agents",
+                ScreenHeader(eyebrow: "PowerOfAIAgents",
                              title: prefs.text("Definições", "Settings"),
                              subtitle: prefs.text("Idioma, aparência e arranque.", "Language, appearance and launch."))
 
@@ -39,7 +39,7 @@ struct SettingsView: View {
 
                 VStack(spacing: 14) {
                     LogoMark(size: 96)
-                    Text("Power of AI Agents").font(.system(.headline, design: .rounded, weight: .bold))
+                    Text("PowerOfAIAgents").font(.system(.headline, design: .rounded, weight: .bold))
                     Text(versionText).font(.caption.monospaced()).foregroundStyle(Brand.faint(scheme))
                     CreditsView()
                     Link(destination: Self.privacyURL) {

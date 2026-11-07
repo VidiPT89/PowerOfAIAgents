@@ -81,7 +81,7 @@ struct ShareResultButton: View {
     let image: Image
 
     var body: some View {
-        ShareLink(item: image, preview: SharePreview("Power of AI Agents", image: image)) {
+        ShareLink(item: image, preview: SharePreview("PowerOfAIAgents", image: image)) {
             Label(prefs.text("Partilhar", "Share"), systemImage: "square.and.arrow.up")
                 .lineLimit(1)
                 .fixedSize()
