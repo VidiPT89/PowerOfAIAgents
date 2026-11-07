@@ -34,7 +34,7 @@ struct InsightsView: View {
                            prefs.text("Dizer se uma ligação é relevante não precisa de gerar texto palavra a palavra. Um encoder faz uma única passagem e devolve uma probabilidade em dezenas de milissegundos.",
                                       "Deciding whether a link is relevant does not need text generated word by word. An encoder does a single pass and returns a probability in tens of milliseconds."))
                     lesson("square.stack.3d.down.right", prefs.text("Arquitetura em cascata", "Cascade architecture"),
-                           prefs.text("Modelos pequenos no dispositivo filtram o grosso das decisões. Os modelos grandes na cloud só entram quando o local tem pouca confiança.",
+                           prefs.text("Modelos pequenos no dispositivo filtram o grosso das decisões. Os modelos grandes na nuvem só entram quando o local tem pouca confiança.",
                                       "Small on-device models filter the bulk of decisions. Large cloud models only step in when the local one has low confidence."))
                 }
                 .card()
@@ -93,7 +93,7 @@ struct InsightsView: View {
             if let localAgent, let cloudAgent {
                 cascadeBody(local: localAgent, cloud: cloudAgent)
             } else {
-                Label(prefs.text("A cascata precisa de pelo menos um agente local e um na cloud. Muda o tipo de um agente no laboratório da Corrida.",
+                Label(prefs.text("A cascata precisa de pelo menos um agente local e um na nuvem. Muda o tipo de um agente no laboratório da Corrida.",
                                  "A cascade needs at least one local and one cloud agent. Change an agent's type in the Race lab."),
                       systemImage: "exclamationmark.triangle")
                     .font(.subheadline)
@@ -112,12 +112,12 @@ struct InsightsView: View {
             .font(.subheadline)
             .foregroundStyle(Brand.dim(scheme))
         HStack {
-            Text(prefs.text("Enviado para a cloud", "Sent to the cloud")).font(.caption)
+            Text(prefs.text("Enviado para a nuvem", "Sent to the cloud")).font(.caption)
             Slider(value: $escalation, in: 0...1)
             Text("\(Int(escalation * 100))%").font(.system(.subheadline, design: .monospaced, weight: .semibold)).frame(width: 48, alignment: .trailing)
         }
         HStack(spacing: 12) {
-            result(prefs.text("Só cloud", "Cloud only"), cloudOnly.milliseconds, Brand.cloud)
+            result(prefs.text("Só nuvem", "Cloud only"), cloudOnly.milliseconds, Brand.cloud)
             result(prefs.text("Cascata", "Cascade"), mixed.milliseconds, Brand.orange)
             if faster {
                 result(prefs.text("Mais rápido", "Faster"), String(format: "×%.1f", cloudOnly / max(mixed, 1)), Brand.ok)

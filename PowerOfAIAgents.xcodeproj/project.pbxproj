@@ -11,12 +11,17 @@
 		1B3D6E5A29D2BA558A7A8D82 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD5DD4EE5B3D17F74DE26ABF /* Components.swift */; };
 		1CDF5218B717B6DA5BAC4EB3 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AF76EDE12DD6F0F00C150CF /* InsightsView.swift */; };
 		1FEE3C78AECABDE6A80BE7AA /* SwarmView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D324580C6E143214453921 /* SwarmView.swift */; };
+		25376DDDB0D4B0FF06B49C0A /* OnDeviceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12DCE647550B2AF976D2FB42 /* OnDeviceModels.swift */; };
 		2CA8DDAF0957C7012D592BEC /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B2481A331E728C7DEECD8F /* SplashView.swift */; };
+		2D52BF5D4F1359868DC1D53B /* ShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F27280BDA0747AE5DAA54F6 /* ShareCard.swift */; };
 		318D8E9AC982776B9E0ED71E /* RaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476093CC6F62BCD2FE7D069E /* RaceView.swift */; };
+		38665CA101D4F8E033CFB959 /* ShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F27280BDA0747AE5DAA54F6 /* ShareCard.swift */; };
+		3F49D56239C4669053A27497 /* OnDeviceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12DCE647550B2AF976D2FB42 /* OnDeviceModels.swift */; };
 		4992F342146BEFAB918D8778 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23FA7E632E43A635CD1E1732 /* SettingsView.swift */; };
 		4BD252D45206ECD7FC1CD7C5 /* SwarmEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E12EC26E41EFE67D594A82B /* SwarmEngine.swift */; };
 		60EDFC8F4E3D194F84946A60 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 94AF6AFFDED1449AEBE33F0A /* Assets.xcassets */; };
 		61B4316DEA893E39F4A912B3 /* RaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 476093CC6F62BCD2FE7D069E /* RaceView.swift */; };
+		6EE2A1097C87D0B97122E36A /* NetworkProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1335F7B43B26CF5D6AF13C24 /* NetworkProbe.swift */; };
 		79D462A8BB576616D51A22E6 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B2481A331E728C7DEECD8F /* SplashView.swift */; };
 		7AFDFC765FA49AD15D09F284 /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F085D81D87AAB3A46383893 /* Preferences.swift */; };
 		911C5F3ADC09350022A53B1F /* RaceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0307E0B312459B31762C7AB2 /* RaceEngine.swift */; };
@@ -31,10 +36,13 @@
 		C95BB6E4B9CF744CD573869E /* AgentLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A79C6F6829AB8F82584D404 /* AgentLabView.swift */; };
 		CA4A649D137807335D6DDABC /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0AF76EDE12DD6F0F00C150CF /* InsightsView.swift */; };
 		CC6D6E6F7B34DCCDE207E584 /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526C6D8827093CAA3D200DBA /* Article.swift */; };
+		CD271F2F6ECBB6A84E6B7710 /* MeasureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1132B2BF69E23989EF4526B9 /* MeasureView.swift */; };
+		CE446341E6F820A192F3B1DB /* MeasureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1132B2BF69E23989EF4526B9 /* MeasureView.swift */; };
 		D479DA26823E16F9DA058CC4 /* FrameLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 115FBB1AD4268C90A43F5E8C /* FrameLoop.swift */; };
 		E3752FA73C169C5125F09CDA /* RaceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0307E0B312459B31762C7AB2 /* RaceEngine.swift */; };
 		ED9760957D57B1366B0A7102 /* PowerOfAIAgentsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAC329E5B9D3C9B7CC608135 /* PowerOfAIAgentsApp.swift */; };
 		EFA46A0B7AE7B8360760DE6C /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD5DD4EE5B3D17F74DE26ABF /* Components.swift */; };
+		F177B1542073D925D7688FAD /* NetworkProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1335F7B43B26CF5D6AF13C24 /* NetworkProbe.swift */; };
 		F3BB1E26ACBF9CBC2C5DB717 /* SwarmView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D324580C6E143214453921 /* SwarmView.swift */; };
 		FAF39F3654C666AC575D916D /* EngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B39251EAE2FA5D197653B43F /* EngineTests.swift */; };
 		FFC8CA54A08E0B7D735D4F06 /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = 526C6D8827093CAA3D200DBA /* Article.swift */; };
@@ -56,7 +64,10 @@
 		0AF76EDE12DD6F0F00C150CF /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		0E12EC26E41EFE67D594A82B /* SwarmEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwarmEngine.swift; sourceTree = "<group>"; };
 		0FD62EC552303336B8FB939D /* PowerOfAIAgentsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PowerOfAIAgentsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1132B2BF69E23989EF4526B9 /* MeasureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasureView.swift; sourceTree = "<group>"; };
 		115FBB1AD4268C90A43F5E8C /* FrameLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameLoop.swift; sourceTree = "<group>"; };
+		12DCE647550B2AF976D2FB42 /* OnDeviceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceModels.swift; sourceTree = "<group>"; };
+		1335F7B43B26CF5D6AF13C24 /* NetworkProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkProbe.swift; sourceTree = "<group>"; };
 		1A79C6F6829AB8F82584D404 /* AgentLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentLabView.swift; sourceTree = "<group>"; };
 		23FA7E632E43A635CD1E1732 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		38B2481A331E728C7DEECD8F /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
@@ -65,6 +76,7 @@
 		526C6D8827093CAA3D200DBA /* Article.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Article.swift; sourceTree = "<group>"; };
 		54CDAAE1ED948DC6AA4B1E26 /* PowerOfAIAgents.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PowerOfAIAgents.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		94AF6AFFDED1449AEBE33F0A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9F27280BDA0747AE5DAA54F6 /* ShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCard.swift; sourceTree = "<group>"; };
 		B39251EAE2FA5D197653B43F /* EngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineTests.swift; sourceTree = "<group>"; };
 		D1D324580C6E143214453921 /* SwarmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwarmView.swift; sourceTree = "<group>"; };
 		DAC329E5B9D3C9B7CC608135 /* PowerOfAIAgentsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerOfAIAgentsApp.swift; sourceTree = "<group>"; };
@@ -88,8 +100,10 @@
 				1A79C6F6829AB8F82584D404 /* AgentLabView.swift */,
 				DD5DD4EE5B3D17F74DE26ABF /* Components.swift */,
 				0AF76EDE12DD6F0F00C150CF /* InsightsView.swift */,
+				1132B2BF69E23989EF4526B9 /* MeasureView.swift */,
 				476093CC6F62BCD2FE7D069E /* RaceView.swift */,
 				23FA7E632E43A635CD1E1732 /* SettingsView.swift */,
+				9F27280BDA0747AE5DAA54F6 /* ShareCard.swift */,
 				38B2481A331E728C7DEECD8F /* SplashView.swift */,
 				D1D324580C6E143214453921 /* SwarmView.swift */,
 			);
@@ -118,6 +132,8 @@
 			children = (
 				526C6D8827093CAA3D200DBA /* Article.swift */,
 				115FBB1AD4268C90A43F5E8C /* FrameLoop.swift */,
+				1335F7B43B26CF5D6AF13C24 /* NetworkProbe.swift */,
+				12DCE647550B2AF976D2FB42 /* OnDeviceModels.swift */,
 				0307E0B312459B31762C7AB2 /* RaceEngine.swift */,
 				0E12EC26E41EFE67D594A82B /* SwarmEngine.swift */,
 			);
@@ -283,11 +299,15 @@
 				EFA46A0B7AE7B8360760DE6C /* Components.swift in Sources */,
 				AE96911F246B8FBA6DF9C40C /* FrameLoop.swift in Sources */,
 				CA4A649D137807335D6DDABC /* InsightsView.swift in Sources */,
+				CD271F2F6ECBB6A84E6B7710 /* MeasureView.swift in Sources */,
+				6EE2A1097C87D0B97122E36A /* NetworkProbe.swift in Sources */,
+				25376DDDB0D4B0FF06B49C0A /* OnDeviceModels.swift in Sources */,
 				98863A631972282A47D2B4E8 /* PowerOfAIAgentsApp.swift in Sources */,
 				92E62EAB8554705FA63CD8BF /* Preferences.swift in Sources */,
 				E3752FA73C169C5125F09CDA /* RaceEngine.swift in Sources */,
 				61B4316DEA893E39F4A912B3 /* RaceView.swift in Sources */,
 				96D1B20A330BF0297D8D561B /* SettingsView.swift in Sources */,
+				2D52BF5D4F1359868DC1D53B /* ShareCard.swift in Sources */,
 				2CA8DDAF0957C7012D592BEC /* SplashView.swift in Sources */,
 				4BD252D45206ECD7FC1CD7C5 /* SwarmEngine.swift in Sources */,
 				F3BB1E26ACBF9CBC2C5DB717 /* SwarmView.swift in Sources */,
@@ -303,11 +323,15 @@
 				1B3D6E5A29D2BA558A7A8D82 /* Components.swift in Sources */,
 				D479DA26823E16F9DA058CC4 /* FrameLoop.swift in Sources */,
 				1CDF5218B717B6DA5BAC4EB3 /* InsightsView.swift in Sources */,
+				CE446341E6F820A192F3B1DB /* MeasureView.swift in Sources */,
+				F177B1542073D925D7688FAD /* NetworkProbe.swift in Sources */,
+				3F49D56239C4669053A27497 /* OnDeviceModels.swift in Sources */,
 				ED9760957D57B1366B0A7102 /* PowerOfAIAgentsApp.swift in Sources */,
 				7AFDFC765FA49AD15D09F284 /* Preferences.swift in Sources */,
 				911C5F3ADC09350022A53B1F /* RaceEngine.swift in Sources */,
 				318D8E9AC982776B9E0ED71E /* RaceView.swift in Sources */,
 				4992F342146BEFAB918D8778 /* SettingsView.swift in Sources */,
+				38665CA101D4F8E033CFB959 /* ShareCard.swift in Sources */,
 				79D462A8BB576616D51A22E6 /* SplashView.swift in Sources */,
 				A06A5C7FCE60C53655D795F7 /* SwarmEngine.swift in Sources */,
 				1FEE3C78AECABDE6A80BE7AA /* SwarmView.swift in Sources */,
@@ -424,6 +448,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Power of AI Agents";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -475,6 +500,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Power of AI Agents";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;

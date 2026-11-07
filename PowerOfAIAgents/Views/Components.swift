@@ -69,11 +69,12 @@ struct SecondaryButtonStyle: ButtonStyle {
 }
 
 struct KindTag: View {
+    @EnvironmentObject private var prefs: Preferences
     let kind: AgentKind
     var body: some View {
         HStack(spacing: 3) {
             Image(systemName: kind == .local ? "cpu" : "cloud")
-            Text(kind == .local ? "local" : "cloud")
+            Text(kind == .local ? "local" : prefs.text("nuvem", "cloud"))
         }
         .font(.system(size: 10, weight: .semibold, design: .monospaced))
         .lineLimit(1)
@@ -86,5 +87,14 @@ struct KindTag: View {
 }
 
 extension Double {
-    var milliseconds: String { self >= 100 ? String(format: "%.0f ms", self) : String(format: "%.1f ms", self) }
+    /// Milliseconds with as many decimals as a value that small needs (on-device models can take microseconds).
+    var milliseconds: String {
+        switch self {
+        case 100...: String(format: "%.0f ms", self)
+        case 1..<100: String(format: "%.1f ms", self)
+        case 0.01..<1: String(format: "%.2f ms", self)
+        case 0: "0 ms"
+        default: String(format: "%.0f µs", self * 1000)
+        }
+    }
 }

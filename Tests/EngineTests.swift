@@ -185,4 +185,87 @@ final class EngineTests: XCTestCase {
         defaults.set(Data("not json".utf8), forKey: "agentTunings")
         XCTAssertEqual(AgentLab(defaults: defaults).tunings, AgentTuning.defaults)
     }
+
+    func testNetworkSampleSplitsTheSystemTimestamps() {
+        let t0 = Date(timeIntervalSince1970: 0)
+        func at(_ ms: Double) -> Date { t0.addingTimeInterval(ms / 1000) }
+        let sample = NetworkSample(domainLookupStart: at(0), domainLookupEnd: at(10), connectStart: at(10),
+                                   secureConnectionStart: at(40), secureConnectionEnd: at(90), connectEnd: at(90),
+                                   requestStart: at(91), responseStart: at(151), responseEnd: at(153), reusedConnection: false)
+        XCTAssertEqual(sample.dns, 10, accuracy: 0.001)
+        XCTAssertEqual(sample.tcp, 30, accuracy: 0.001)
+        XCTAssertEqual(sample.tls, 50, accuracy: 0.001)
+        XCTAssertEqual(sample.server, 60, accuracy: 0.001)
+        XCTAssertEqual(sample.transfer, 2, accuracy: 0.001)
+        XCTAssertEqual(sample.handshake, 90, accuracy: 0.001)
+
+        // A reused connection has no handshake timestamps at all.
+        let reused = NetworkSample(domainLookupStart: nil, domainLookupEnd: nil, connectStart: nil, secureConnectionStart: nil,
+                                   secureConnectionEnd: nil, connectEnd: nil, requestStart: at(0), responseStart: at(40),
+                                   responseEnd: at(41), reusedConnection: true)
+        XCTAssertEqual(reused.handshake, 0)
+        XCTAssertEqual(reused.total, 41, accuracy: 0.001)
+
+        let average = NetworkSample.average([sample, reused])
+        XCTAssertEqual(average?.total ?? 0, (sample.total + reused.total) / 2, accuracy: 0.001)
+        XCTAssertEqual(average?.reusedConnection, false)
+        XCTAssertNil(NetworkSample.average([]))
+
+        // A redirect is two transactions: the first pays the handshake, the second reuses the connection.
+        let redirected = NetworkSample.combined([sample, reused])
+        XCTAssertEqual(redirected?.handshake ?? 0, 90, accuracy: 0.001)
+        XCTAssertEqual(redirected?.total ?? 0, sample.total + reused.total, accuracy: 0.001)
+        XCTAssertEqual(redirected?.reusedConnection, false)
+    }
+
+    func testArticleLinksKeepWholeTerms() {
+        let links = Article.english.links
+        XCTAssertEqual(links.count, Article.english.relevance.count)
+        XCTAssertEqual(links.first, ArticleLink(text: "wolf spider", relevant: true))
+        XCTAssertTrue(links.contains(ArticleLink(text: "hydraulic system", relevant: true)))
+    }
+
+    func testOnDeviceEncoderIsRealFastAndHonest() throws {
+        let classifier = try XCTUnwrap(EmbeddingClassifier(), "English word embedding missing on this system")
+        XCTAssertTrue(classifier.isAboutSpiders("wolf spider"))
+        XCTAssertTrue(classifier.isAboutSpiders("arachnids"))
+        XCTAssertFalse(classifier.isAboutSpiders("rain"))
+        XCTAssertFalse(classifier.isAboutSpiders("steel"))
+        let run = classifier.run(on: Article.english.links, rounds: 5)
+        XCTAssertEqual(run.decisions, Article.english.links.count)
+        XCTAssertGreaterThan(run.accuracy, 0.6)
+        XCTAssertLessThan(run.averageMilliseconds, 5)
+    }
+
+    func testGenerativeAvailabilityNeverCrashes() {
+        _ = GenerativeClassifier.unavailableReason
+    }
+
+    func testMillisecondsKeepUsefulPrecision() {
+        XCTAssertEqual(465.0.milliseconds, "465 ms")
+        XCTAssertEqual(34.7.milliseconds, "34.7 ms")
+        XCTAssertEqual(0.25.milliseconds, "0.25 ms")
+        XCTAssertEqual(0.004.milliseconds, "4 µs")
+        XCTAssertEqual(0.0.milliseconds, "0 ms")
+    }
+
+    @MainActor
+    func testNetworkPresetOnlyChangesCloudAgents() {
+        let lab = AgentLab(defaults: UserDefaults(suiteName: "lab-test-\(UUID().uuidString)")!)
+        lab.setCloudNetwork(480)
+        for (i, tuning) in lab.tunings.enumerated() {
+            XCTAssertEqual(tuning.network, tuning.kind == .cloud ? 480 : AgentTuning.defaults[i].network)
+        }
+        XCTAssertEqual(lab.activeNetworkPreset([40, 480]), 480)
+        lab.tunings[1].network = 300
+        XCTAssertNil(lab.activeNetworkPreset([40, 480]))
+    }
+
+    @MainActor
+    func testShareCardRendersAnImage() {
+        let card = ShareCard(eyebrow: "Test", title: "Title",
+                             rows: [.init(colorIndex: 0, name: "Ember", detail: "local", value: "12", note: "34 ms")],
+                             footnote: "Power of AI Agents")
+        XCTAssertNotNil(card.image())
+    }
 }

@@ -8,6 +8,12 @@ struct ArticleToken: Sendable, Equatable {
     var joinsPrevious = false
 }
 
+/// A link as a whole (all its words) and whether it is about spiders.
+struct ArticleLink: Sendable, Equatable {
+    let text: String
+    let relevant: Bool
+}
+
 struct Article: Sendable {
     let title: String
     let paragraphs: [[ArticleToken]]
@@ -48,6 +54,13 @@ struct Article: Sendable {
         let attached = afterLink && text.first.map { !$0.isWhitespace } == true
         return text.split(separator: " ").enumerated().map { index, word in
             ArticleToken(text: String(word), link: link, joinsPrevious: index == 0 && attached)
+        }
+    }
+
+    var links: [ArticleLink] {
+        let tokens = paragraphs.flatMap { $0 }
+        return relevance.indices.map { index in
+            ArticleLink(text: tokens.filter { $0.link == index }.map(\.text).joined(separator: " "), relevant: relevance[index])
         }
     }
 

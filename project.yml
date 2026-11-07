@@ -44,6 +44,8 @@ targets:
       base:
         ENABLE_APP_SANDBOX: YES
         ENABLE_HARDENED_RUNTIME: YES
+        # The real measurement sends HEAD requests to ividi.dev.
+        ENABLE_OUTGOING_NETWORK_CONNECTIONS: YES
     scheme:
       testTargets: [PowerOfAIAgentsTests]
   PowerOfAIAgentsTests:

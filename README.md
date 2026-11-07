@@ -18,21 +18,23 @@
 - ✅ Live verdict boxes on the page: green for correct finds, red for false alarms, dashed for missed links
 - ✅ Cloud agents show the request travelling to the data centre and back (TCP · TLS, server queue, inference, response)
 - ✅ Live scoreboard with finds, decisions and average latency per decision, plus a final "× more decisions" summary
-- ✅ **Agent lab:** tune each agent's type (local or cloud), inference time, network round trip, queue and accuracy, with a live estimate of decisions per race. Settings are saved and also drive the latency and cascade screen
+- ✅ **Share:** when a race ends, share the scoreboard as an image with the app logo, ready for social media
+- ✅ **Agent lab:** tune each agent's type (local or cloud), inference time, network round trip, queue and accuracy, with a live estimate of decisions per race, plus one-tap network presets (same city, fibre, 4G, satellite, or your measured connection). Settings are saved and also drive the latency and cascade screen
+- ✅ **Real measurement:** real HTTPS requests to ividi.dev split into DNS, TCP, TLS, round trip and transfer (new versus reused connection), an on-device word-embedding encoder (NaturalLanguage) and, on devices with Apple Intelligence, Apple's on-device generative model (Foundation Models) labelling the same links. The results can be shared as an image and applied to the race
 - ✅ **Agent swarm:** from 1 to 32 cursors take layers from a shared queue and build a review dashboard on a canvas, with size badges and a live "agents · layers" status pill
 - ✅ Exact expected build time and speed-up compared with a single agent (the swarm is deterministic, so the result is known before it starts)
 - ✅ **Latency anatomy:** stacked bars showing where every millisecond goes (TCP, TLS, routing, queue, inference) for each agent
 - ✅ **Cascade simulator:** choose how much traffic a local model escalates to the cloud and see the resulting average latency
 - ✅ Deterministic, seedable simulation engine, separated from the UI and covered by unit tests run on every push (GitHub Actions)
 - ✅ Simulations pause when the app goes to the background, and a frame never advances more than 0.1 s, so nothing jumps ahead after a hitch
-- ✅ Privacy manifest included: no tracking, no data collected, no network access
+- ✅ Privacy manifest included: no tracking and no data collected. The only network access is the optional measurement, which sends HEAD requests to ividi.dev when you tap **Measure**
 - ✅ Animated splash screen with the app logo and credits
 - ✅ Runtime language switch: Português (PT-PT) and English
 - ✅ Dark mode, Light mode and System mode
 - ✅ Custom colour identity inspired by [ividi.dev](https://ividi.dev/): orange, burnt amber and near-black
 - ✅ One shared SwiftUI codebase for iPhone, iPad and Mac
 
-> **Note:** this is an illustrative simulation. The agent names (Ember, Nimbus, Stratus, Flint) are fictional, and the latencies use realistic orders of magnitude for on-device inference, network round trips, TLS, server queues and token-by-token generation. No real model or network call is involved.
+> **Note:** the race, swarm and latency screens are illustrative simulations. The agent names (Ember, Nimbus, Stratus, Flint) are fictional, and the latencies use realistic orders of magnitude for on-device inference, network round trips, TLS, server queues and token-by-token generation. The **Measure** tab is the exception: everything there is measured for real on your device.
 
 ## 🛠️ Tech Stack
 
@@ -41,6 +43,7 @@
 | Language | Swift 6 |
 | UI | SwiftUI, Canvas (iOS 17+ / macOS 14+) |
 | Text layout | Core Text |
+| Real measurement | URLSession task metrics, NaturalLanguage word embeddings, Apple Foundation Models (iOS 26 / macOS 26) |
 | Testing | XCTest |
 | Project | XcodeGen |
 
@@ -79,6 +82,7 @@ Choose the `PowerOfAIAgents` scheme for iPhone/iPad or `PowerOfAIAgents-macOS` f
 - **Race:** press **Start race** (or Space on the Mac). Pick a duration of 10, 20, 30 or 60 seconds. **Reset** starts a new run with a fresh seed.
 - **Tune:** open the agent lab to change each agent. Try moving a cloud agent onto the device, or making the local encoder less accurate, and run the race again. An orange dot on **Tune** means custom values are active; **Restore all defaults** brings back the original line-up.
 - **Swarm:** choose the number of agents with the slider and press **Build**. Compare the elapsed time with the single-agent time.
+- **Measure:** tap **Measure** to time real requests to ividi.dev and the on-device models. **Use in the race** copies the measured numbers into the agent lab; **Share** exports the results as an image. The generative model needs Apple Intelligence and does not run in the simulator.
 - **Why:** read the latency breakdown and drag the cascade slider to see how escalating only low-confidence cases changes the average latency.
 - **Settings:** switch language (PT/EN), appearance (System, Light, Dark) and whether the intro is shown on launch.
 
@@ -89,7 +93,7 @@ xcodebuild -project PowerOfAIAgents.xcodeproj -scheme PowerOfAIAgents-macOS -des
 xcodebuild -project PowerOfAIAgents.xcodeproj -scheme PowerOfAIAgents -destination 'generic/platform=iOS Simulator' build
 ```
 
-The unit tests cover the race engine (determinism regardless of frame rate, verdict counters, local versus cloud throughput), the cascade maths, the swarm engine (every layer built exactly once, more agents finishing faster, prediction equal to a frame-by-frame run), the agent lab (tuning, clamping, saving, the log-scale sliders and the decision estimate), the article parser and text layout (every link placed, punctuation kept next to its link) and the parity of links between the Portuguese and English articles. The same checks run on GitHub Actions for every push.
+The unit tests cover the race engine (determinism regardless of frame rate, verdict counters, local versus cloud throughput), the cascade maths, the swarm engine (every layer built exactly once, more agents finishing faster, prediction equal to a frame-by-frame run), the agent lab (tuning, clamping, saving, the log-scale sliders and the decision estimate), the real measurement (network timestamps split per phase, redirects keeping their handshake, the on-device encoder's speed and accuracy, the share image), the network presets, the article parser and text layout (every link placed, punctuation kept next to its link) and the parity of links between the Portuguese and English articles. The same checks run on GitHub Actions for every push.
 
 ## 📄 License
 

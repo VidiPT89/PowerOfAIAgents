@@ -156,6 +156,7 @@ struct RaceView: View {
     @Environment(\.colorScheme) private var scheme
     @ObservedObject var model: RaceModel
     @State private var showLab = false
+    @State private var shareImage: Image?
 
     var body: some View {
         ScrollView {
@@ -178,7 +179,7 @@ struct RaceView: View {
                         }
                     }
                 }
-                Scoreboard(engine: model.engine)
+                Scoreboard(engine: model.engine, shareImage: shareImage)
                 Text(prefs.text(
                     "Simulação ilustrativa: os nomes dos modelos são fictícios e as latências usam ordens de grandeza reais (rede, TLS, filas e inferência).",
                     "Illustrative simulation: model names are fictional and latencies use real-world orders of magnitude (network, TLS, queues and inference)."))
@@ -191,12 +192,33 @@ struct RaceView: View {
         }
         .background(Brand.background(scheme).ignoresSafeArea())
         .sensoryFeedback(.success, trigger: model.engine.isFinished) { _, finished in finished }
+        .onChange(of: model.engine.isFinished) { _, finished in shareImage = finished ? shareCard.image() : nil }
+        .onChange(of: prefs.language) { _, _ in if model.engine.isFinished { shareImage = shareCard.image() } }
         .sheet(isPresented: $showLab) {
             AgentLabView(duration: model.duration, walkTime: model.engine.walkTime)
                 .environmentObject(prefs)
                 .environmentObject(lab)
                 .preferredColorScheme(prefs.appearance.scheme)
         }
+    }
+
+    /// The final scoreboard as an image for sharing.
+    private var shareCard: ShareCard {
+        let engine = model.engine
+        let rows = engine.ranking.map { index in
+            let profile = engine.profiles[index]
+            let run = engine.runs[index]
+            return ShareCard.Row(
+                colorIndex: profile.id,
+                name: profile.name,
+                detail: "\(profile.kind == .local ? "local" : prefs.text("nuvem", "cloud")) · \(run.averageLatency.milliseconds)",
+                value: prefs.text("\(run.finds) achados", "\(run.finds) finds"),
+                note: prefs.text("\(run.decisions) decisões", "\(run.decisions) decisions"))
+        }
+        return ShareCard(eyebrow: prefs.text("Corrida de agentes", "Agent race"),
+                         title: prefs.text("Quatro agentes, uma página, \(Int(engine.duration)) segundos", "Four agents, one page, \(Int(engine.duration)) seconds"),
+                         rows: rows,
+                         footnote: lab.isCustomised ? prefs.text("Power of AI Agents · valores personalizados", "Power of AI Agents · custom values") : "Power of AI Agents")
     }
 
     private var panelHeight: CGFloat {
@@ -545,6 +567,7 @@ struct Scoreboard: View {
     @EnvironmentObject private var prefs: Preferences
     @Environment(\.colorScheme) private var scheme
     let engine: RaceEngine
+    let shareImage: Image?
 
     var body: some View {
         let ranking = engine.ranking
@@ -553,10 +576,13 @@ struct Scoreboard: View {
             HStack {
                 Text(prefs.text("Placar", "Scoreboard")).font(.system(.headline, design: .rounded, weight: .bold))
                 Spacer()
-                if engine.isFinished, let winner = ranking.first, let last = ranking.last, engine.runs[last].decisions > 0 {
-                    let ratio = Double(engine.runs[winner].decisions) / Double(engine.runs[last].decisions)
-                    Text(prefs.text("\(engine.profiles[winner].name) decidiu \(String(format: "%.1f", ratio))× mais",
-                                    "\(engine.profiles[winner].name) made \(String(format: "%.1f", ratio))× more decisions"))
+                if engine.isFinished,
+                   let fastest = engine.runs.indices.max(by: { engine.runs[$0].decisions < engine.runs[$1].decisions }),
+                   let slowest = engine.runs.indices.min(by: { engine.runs[$0].decisions < engine.runs[$1].decisions }),
+                   fastest != slowest, engine.runs[slowest].decisions > 0 {
+                    let ratio = Double(engine.runs[fastest].decisions) / Double(engine.runs[slowest].decisions)
+                    Text(prefs.text("\(engine.profiles[fastest].name) decidiu \(String(format: "%.1f", ratio))× mais do que \(engine.profiles[slowest].name)",
+                                    "\(engine.profiles[fastest].name) made \(String(format: "%.1f", ratio))× more decisions than \(engine.profiles[slowest].name)"))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Brand.accent(scheme))
                 }
@@ -589,9 +615,13 @@ struct Scoreboard: View {
                         .frame(width: 66, alignment: .trailing)
                 }
             }
-            Text(prefs.text("achados / decisões · latência média por decisão", "finds / decisions · average latency per decision"))
-                .font(.caption2)
-                .foregroundStyle(Brand.faint(scheme))
+            HStack {
+                Text(prefs.text("achados / decisões · latência média por decisão", "finds / decisions · average latency per decision"))
+                    .font(.caption2)
+                    .foregroundStyle(Brand.faint(scheme))
+                Spacer()
+                if let shareImage { ShareResultButton(image: shareImage) }
+            }
         }
         .card()
     }

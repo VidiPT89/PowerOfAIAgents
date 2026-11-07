@@ -6,6 +6,9 @@ final class AgentLab: ObservableObject {
     private let defaults: UserDefaults
     private static let key = "agentTunings"
 
+    /// Last fresh-connection trip measured on this device, offered as a network preset.
+    @Published var measuredNetwork: Double?
+
     @Published var tunings: [AgentTuning] {
         didSet {
             guard tunings != oldValue else { return }
@@ -29,6 +32,20 @@ final class AgentLab: ObservableObject {
     var isCustomised: Bool { tunings != AgentTuning.defaults }
 
     func reset() { tunings = AgentTuning.defaults }
+
+    /// Gives every cloud agent the same network round trip.
+    func setCloudNetwork(_ milliseconds: Double) {
+        for i in tunings.indices where tunings[i].kind == .cloud {
+            tunings[i].network = milliseconds.clamped(to: AgentTuning.networkRange)
+        }
+    }
+
+    /// The preset currently matching every cloud agent, if any.
+    func activeNetworkPreset(_ presets: [Double]) -> Double? {
+        let cloud = tunings.filter { $0.kind == .cloud }.map(\.network)
+        guard let first = cloud.first, cloud.allSatisfy({ abs($0 - first) < 0.5 }) else { return nil }
+        return presets.first { abs($0.clamped(to: AgentTuning.networkRange) - first) < 0.5 }
+    }
     func reset(agent id: Int) { tunings[id] = AgentTuning.defaults[id] }
 }
 
@@ -49,6 +66,7 @@ struct AgentLabView: View {
                         "Change each agent's type, latency and accuracy and watch the scoreboard change. Your settings are saved and the race restarts with them."))
                         .font(.subheadline)
                         .foregroundStyle(Brand.dim(scheme))
+                    NetworkPresets()
                     ForEach(AgentProfile.lineup) { profile in
                         AgentTuningCard(profile: profile, tuning: $lab.tunings[profile.id], duration: duration, walkTime: walkTime) {
                             lab.reset(agent: profile.id)
@@ -114,7 +132,7 @@ struct AgentTuningCard: View {
 
             Picker(prefs.text("Onde corre", "Runs on"), selection: $tuning.kind) {
                 Label("local", systemImage: "cpu").tag(AgentKind.local)
-                Label("cloud", systemImage: "cloud").tag(AgentKind.cloud)
+                Label(prefs.text("nuvem", "cloud"), systemImage: "cloud").tag(AgentKind.cloud)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -175,18 +193,77 @@ struct TuningSlider: View {
 }
 
 enum TuningScale {
-    /// Log scales start at 1 so a range that begins at 0 still works.
+    /// Logarithmic ranges must start above 0 (all latency ranges do).
     static func position(of value: Double, in range: ClosedRange<Double>, logarithmic: Bool) -> Double {
         let v = value.clamped(to: range)
         guard logarithmic else { return (v - range.lowerBound) / (range.upperBound - range.lowerBound) }
-        let low = log(max(range.lowerBound, 1)), high = log(range.upperBound)
-        return (log(max(v, 1)) - low) / (high - low)
+        let low = log(range.lowerBound), high = log(range.upperBound)
+        return (log(v) - low) / (high - low)
     }
 
     static func value(at position: Double, in range: ClosedRange<Double>, logarithmic: Bool) -> Double {
         let p = position.clamped(to: 0...1)
         guard logarithmic else { return range.lowerBound + p * (range.upperBound - range.lowerBound) }
-        let low = log(max(range.lowerBound, 1)), high = log(range.upperBound)
+        let low = log(range.lowerBound), high = log(range.upperBound)
         return exp(low + p * (high - low)).clamped(to: range)
+    }
+}
+
+/// One tap sets the network of every cloud agent to a typical connection.
+struct NetworkPresets: View {
+    @EnvironmentObject private var prefs: Preferences
+    @EnvironmentObject private var lab: AgentLab
+    @Environment(\.colorScheme) private var scheme
+
+    private struct Preset: Identifiable {
+        let pt: String, en: String, milliseconds: Double
+        var id: String { en }
+    }
+
+    private var presets: [Preset] {
+        var list = [
+            Preset(pt: "Mesma cidade", en: "Same city", milliseconds: 40),
+            Preset(pt: "Fibra", en: "Fibre", milliseconds: AgentTuning.defaults[1].network),
+            Preset(pt: "4G", en: "4G", milliseconds: 480),
+            Preset(pt: "Satélite", en: "Satellite", milliseconds: 1200),
+        ]
+        if let measured = lab.measuredNetwork {
+            list.insert(Preset(pt: "Medido", en: "Measured", milliseconds: measured), at: 0)
+        }
+        return list
+    }
+
+    var body: some View {
+        let active = lab.activeNetworkPreset(presets.map(\.milliseconds))
+        VStack(alignment: .leading, spacing: 10) {
+            Label(prefs.text("Rede dos agentes na nuvem", "Cloud agents' network"), systemImage: "antenna.radiowaves.left.and.right")
+                .font(.system(.subheadline, design: .rounded, weight: .bold))
+                .foregroundStyle(Brand.accent(scheme))
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(presets) { preset in
+                    let selected = active.map { abs($0 - preset.milliseconds) < 0.5 } ?? false
+                    Button {
+                        withAnimation { lab.setCloudNetwork(preset.milliseconds) }
+                    } label: {
+                        VStack(spacing: 2) {
+                            Text(prefs.text(preset.pt, preset.en)).font(.caption.weight(.semibold))
+                            Text(preset.milliseconds.clamped(to: AgentTuning.networkRange).milliseconds).font(.caption2.monospacedDigit())
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .foregroundStyle(selected ? Color.black : Brand.text(scheme))
+                        .background(selected ? AnyShapeStyle(Brand.gradient) : AnyShapeStyle(Brand.panel2(scheme)),
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
+                }
+            }
+            Text(prefs.text("Ida e volta com TCP, TLS e rota, para todos os agentes que correm na nuvem.",
+                            "Round trip with TCP, TLS and routing, for every agent running in the cloud."))
+                .font(.caption)
+                .foregroundStyle(Brand.faint(scheme))
+        }
+        .card()
     }
 }

@@ -65,7 +65,7 @@ struct SplashView: View {
                 .font(.system(size: 36, weight: .bold, design: .rounded))
                 .foregroundStyle(Brand.text(scheme))
                 .multilineTextAlignment(.center)
-            Text(prefs.text("Local contra cloud. Física, não magia.", "Local versus cloud. Physics, not magic."))
+            Text(prefs.text("Local contra nuvem. Física, não magia.", "Local versus cloud. Physics, not magic."))
                 .font(.subheadline)
                 .foregroundStyle(Brand.dim(scheme))
                 .padding(.top, 8)

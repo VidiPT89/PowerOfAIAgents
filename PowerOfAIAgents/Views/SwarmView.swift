@@ -61,7 +61,7 @@ struct SwarmView: View {
                         "Cada cursor é um agente. Tiram a próxima camada de uma fila partilhada, voam até lá e constroem-na. Mais agentes, menos espera.",
                         "Each cursor is an agent. They take the next layer from a shared queue, fly there and build it. More agents, less waiting."))
                 controls
-                SwarmCanvas(engine: model.engine)
+                SwarmCanvas(engine: model.engine, summary: prefs.text("\(model.engine.builtCount) de \(model.engine.layers.count) camadas construídas por \(model.agentCount) agentes", "\(model.engine.builtCount) of \(model.engine.layers.count) layers built by \(model.agentCount) agents"))
                     .aspectRatio(16 / 10, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Brand.stroke(scheme)))
@@ -155,6 +155,7 @@ struct SwarmView: View {
 struct SwarmCanvas: View {
     @Environment(\.colorScheme) private var scheme
     let engine: SwarmEngine
+    let summary: String
 
     var body: some View {
         Canvas { context, size in
@@ -213,7 +214,7 @@ struct SwarmCanvas: View {
             }
         }
         .drawingGroup()
-        .accessibilityLabel("\(engine.builtCount) / \(engine.layers.count)")
+        .accessibilityLabel(summary)
     }
 
     private func drawGrid(_ context: inout GraphicsContext, size: CGSize, dark: Bool) {

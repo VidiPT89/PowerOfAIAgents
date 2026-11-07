@@ -84,7 +84,7 @@ struct AgentTuning: Codable, Equatable, Sendable {
     /// Share of decisions that are right (0.5 is a coin toss).
     var accuracy: Double
 
-    static let inferenceRange = 5.0...2500.0
+    static let inferenceRange = 0.001...2500.0
     static let networkRange = 20.0...1200.0
     static let queueRange = 0.0...800.0
     static let accuracyRange = 0.5...1.0

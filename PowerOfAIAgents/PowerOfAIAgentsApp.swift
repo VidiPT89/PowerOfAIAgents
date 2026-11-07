@@ -41,12 +41,13 @@ struct RootView: View {
 }
 
 enum AppSection: String, CaseIterable, Identifiable {
-    case race, swarm, insights, settings
+    case race, swarm, measure, insights, settings
     var id: String { rawValue }
     var symbol: String {
         switch self {
         case .race: "flag.checkered"
         case .swarm: "square.stack.3d.up.fill"
+        case .measure: "stopwatch"
         case .insights: "speedometer"
         case .settings: "gearshape.fill"
         }
@@ -59,6 +60,7 @@ struct MainView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var race = RaceModel()
     @StateObject private var swarm = SwarmModel()
+    @StateObject private var measure = MeasureModel()
     @State private var section: AppSection = .race
 
     var body: some View {
@@ -69,6 +71,9 @@ struct MainView: View {
             SwarmView(model: swarm)
                 .tabItem { Label(title(.swarm), systemImage: AppSection.swarm.symbol) }
                 .tag(AppSection.swarm)
+            MeasureView(model: measure)
+                .tabItem { Label(title(.measure), systemImage: AppSection.measure.symbol) }
+                .tag(AppSection.measure)
             InsightsView()
                 .tabItem { Label(title(.insights), systemImage: AppSection.insights.symbol) }
                 .tag(AppSection.insights)
@@ -95,6 +100,7 @@ struct MainView: View {
         switch section {
         case .race: prefs.text("Corrida", "Race")
         case .swarm: prefs.text("Enxame", "Swarm")
+        case .measure: prefs.text("Medir", "Measure")
         case .insights: prefs.text("Porquê", "Why")
         case .settings: prefs.text("Definições", "Settings")
         }
