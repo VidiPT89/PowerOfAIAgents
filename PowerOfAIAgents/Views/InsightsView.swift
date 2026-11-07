@@ -2,10 +2,11 @@ import SwiftUI
 
 struct InsightsView: View {
     @EnvironmentObject private var prefs: Preferences
+    @EnvironmentObject private var lab: AgentLab
     @Environment(\.colorScheme) private var scheme
     @State private var escalation = 0.1
 
-    private let profiles = AgentProfile.lineup
+    private var profiles: [AgentProfile] { lab.profiles }
     private var segments: [(KeyPath<LatencyBreakdown, Double>, String, String, Color)] {[
         (\.tcp, "TCP", "TCP", Color(hex: 0x64748B)),
         (\.tls, "TLS", "TLS", Color(hex: 0x94A3B8)),
@@ -83,15 +84,18 @@ struct InsightsView: View {
     }
 
     private var cascade: some View {
-        let local = profiles[0].typical
-        let cloud = profiles[2].typical
+        // The fastest local agent filters, the slowest cloud agent takes what it escalates.
+        let localAgent = profiles.filter { $0.kind == .local }.min { $0.typical.total < $1.typical.total } ?? profiles[0]
+        let cloudAgent = profiles.filter { $0.kind == .cloud }.max { $0.typical.total < $1.typical.total } ?? profiles[2]
+        let local = localAgent.typical
+        let cloud = cloudAgent.typical
         let mixed = Cascade.averageLatency(local: local, cloud: cloud, escalation: escalation)
         let cloudOnly = cloud.total
         return VStack(alignment: .leading, spacing: 12) {
             Text(prefs.text("Simulador de cascata", "Cascade simulator"))
                 .font(.system(.headline, design: .rounded, weight: .bold))
-            Text(prefs.text("\(profiles[0].name) decide tudo localmente e só envia para \(profiles[2].name) a percentagem de casos com pouca confiança.",
-                            "\(profiles[0].name) decides everything locally and only forwards the low-confidence share to \(profiles[2].name)."))
+            Text(prefs.text("\(localAgent.name) decide tudo localmente e só envia para \(cloudAgent.name) a percentagem de casos com pouca confiança.",
+                            "\(localAgent.name) decides everything locally and only forwards the low-confidence share to \(cloudAgent.name)."))
                 .font(.subheadline)
                 .foregroundStyle(Brand.dim(scheme))
             HStack {

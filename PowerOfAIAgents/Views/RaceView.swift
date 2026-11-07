@@ -11,9 +11,18 @@ final class RaceModel: ObservableObject {
     private var clock = 0.0
     private var loop: Task<Void, Never>?
     private var seed: UInt64 = 7
+    private(set) var profiles = AgentProfile.lineup
 
     init() {
         engine = RaceEngine(relevance: Article.english.relevance, duration: 20, seed: 7)
+    }
+
+    /// Restarts the race with new agent settings from the lab.
+    func configure(_ profiles: [AgentProfile]) {
+        let changed = profiles.map(\.id) != self.profiles.map(\.id) || zip(profiles, self.profiles).contains { !$0.sameSettings(as: $1) }
+        guard changed else { return }
+        self.profiles = profiles
+        reset()
     }
 
     var hasStarted: Bool { engine.time > 0 }
@@ -51,7 +60,7 @@ final class RaceModel: ObservableObject {
         pause()
         clock = 0
         seed &+= 1
-        engine = RaceEngine(relevance: Article.english.relevance, duration: duration, seed: seed)
+        engine = RaceEngine(profiles: profiles, relevance: Article.english.relevance, duration: duration, seed: seed)
     }
 }
 
@@ -152,8 +161,10 @@ struct ArticleLayout {
 
 struct RaceView: View {
     @EnvironmentObject private var prefs: Preferences
+    @EnvironmentObject private var lab: AgentLab
     @Environment(\.colorScheme) private var scheme
     @ObservedObject var model: RaceModel
+    @State private var showLab = false
 
     var body: some View {
         ScrollView {
@@ -189,6 +200,12 @@ struct RaceView: View {
         }
         .background(Brand.background(scheme).ignoresSafeArea())
         .sensoryFeedback(.success, trigger: model.engine.isFinished) { _, finished in finished }
+        .sheet(isPresented: $showLab) {
+            AgentLabView(duration: model.duration, walkTime: model.engine.walkTime)
+                .environmentObject(prefs)
+                .environmentObject(lab)
+                .preferredColorScheme(prefs.appearance.scheme)
+        }
     }
 
     private var panelHeight: CGFloat {
@@ -237,6 +254,22 @@ struct RaceView: View {
     }
 
     @ViewBuilder private var timing: some View {
+        Button {
+            model.pause()
+            showLab = true
+        } label: {
+            Label(prefs.text("Ajustar", "Tune"), systemImage: "slider.horizontal.3")
+                .lineLimit(1)
+                .fixedSize()
+                .overlay(alignment: .topTrailing) {
+                    if lab.isCustomised {
+                        Circle().fill(Brand.orange).frame(width: 7, height: 7).offset(x: 9, y: -7)
+                    }
+                }
+        }
+        .buttonStyle(SecondaryButtonStyle())
+        .accessibilityHint(lab.isCustomised ? prefs.text("Valores personalizados", "Custom values") : "")
+
         Menu {
             ForEach(RaceModel.durations, id: \.self) { value in
                 Button("\(Int(value)) s") { model.duration = value }

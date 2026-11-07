@@ -14,6 +14,7 @@
 - ✅ Live verdict boxes on the page: green for correct finds, red for false alarms, dashed for missed links
 - ✅ Cloud agents show the request travelling to the data centre and back (TCP · TLS, server queue, inference, response)
 - ✅ Live scoreboard with finds, decisions and average latency per decision, plus a final "× more decisions" summary
+- ✅ **Agent lab:** tune each agent's type (local or cloud), inference time, network round trip, queue and accuracy, with a live estimate of decisions per race. Settings are saved and also drive the latency and cascade screen
 - ✅ **Agent swarm:** from 1 to 32 cursors take layers from a shared queue and build a review dashboard on a canvas, with size badges and a live "agents · layers" status pill
 - ✅ Exact expected build time and speed-up compared with a single agent (the swarm is deterministic, so the result is known before it starts)
 - ✅ **Latency anatomy:** stacked bars showing where every millisecond goes (TCP, TLS, routing, queue, inference) for each agent
@@ -71,6 +72,7 @@ Choose the `PowerOfAIAgents` scheme for iPhone/iPad or `PowerOfAIAgents-macOS` f
 ## 📖 Usage
 
 - **Race:** press **Start race** (or Space on the Mac). Pick a duration of 10, 20, 30 or 60 seconds. **Reset** starts a new run with a fresh seed.
+- **Tune:** open the agent lab to change each agent. Try moving a cloud agent onto the device, or making the local encoder less accurate, and run the race again. An orange dot on **Tune** means custom values are active; **Restore all defaults** brings back the original line-up.
 - **Swarm:** choose the number of agents with the slider and press **Build**. Compare the elapsed time with the single-agent time.
 - **Why:** read the latency breakdown and drag the cascade slider to see how escalating only low-confidence cases changes the average latency.
 - **Settings:** switch language (PT/EN), appearance (System, Light, Dark) and whether the intro is shown on launch.
@@ -82,7 +84,7 @@ xcodebuild -project PowerOfAIAgents.xcodeproj -scheme PowerOfAIAgents-macOS -des
 xcodebuild -project PowerOfAIAgents.xcodeproj -scheme PowerOfAIAgents -destination 'generic/platform=iOS Simulator' build
 ```
 
-The unit tests cover the race engine (determinism regardless of frame rate, verdict counters, local versus cloud throughput), the cascade maths, the swarm engine (every layer built exactly once, more agents finishing faster, prediction equal to a frame-by-frame run), the article parser and text layout (every link placed, punctuation kept next to its link) and the parity of links between the Portuguese and English articles. The same checks run on GitHub Actions for every push.
+The unit tests cover the race engine (determinism regardless of frame rate, verdict counters, local versus cloud throughput), the cascade maths, the swarm engine (every layer built exactly once, more agents finishing faster, prediction equal to a frame-by-frame run), the agent lab (tuning, clamping, saving, the log-scale sliders and the decision estimate), the article parser and text layout (every link placed, punctuation kept next to its link) and the parity of links between the Portuguese and English articles. The same checks run on GitHub Actions for every push.
 
 ## 📄 License
 

@@ -3,11 +3,13 @@ import SwiftUI
 @main
 struct PowerOfAIAgentsApp: App {
     @StateObject private var prefs = Preferences()
+    @StateObject private var lab = AgentLab()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(prefs)
+                .environmentObject(lab)
                 .preferredColorScheme(prefs.appearance.scheme)
                 .tint(Brand.orange)
                 #if os(macOS)
@@ -53,6 +55,7 @@ enum AppSection: String, CaseIterable, Identifiable {
 
 struct MainView: View {
     @EnvironmentObject private var prefs: Preferences
+    @EnvironmentObject private var lab: AgentLab
     @StateObject private var race = RaceModel()
     @StateObject private var swarm = SwarmModel()
     @State private var section: AppSection = .race
@@ -72,6 +75,8 @@ struct MainView: View {
                 .tabItem { Label(title(.settings), systemImage: AppSection.settings.symbol) }
                 .tag(AppSection.settings)
         }
+        .onAppear { race.configure(lab.profiles) }
+        .onChange(of: lab.tunings) { _, _ in race.configure(lab.profiles) }
         .onChange(of: section) { _, new in
             if new != .race { race.pause() }
             if new != .swarm { swarm.pause() }

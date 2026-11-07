@@ -17,7 +17,7 @@ struct SeededRandom: RandomNumberGenerator, Sendable {
     }
 }
 
-enum AgentKind: String, Sendable { case local, cloud }
+enum AgentKind: String, Codable, Sendable { case local, cloud }
 
 enum ModelFamily: Sendable {
     /// Non-autoregressive classifier: one forward pass, one calibrated probability.
@@ -70,6 +70,84 @@ struct AgentProfile: Identifiable, Sendable {
         AgentProfile(id: 3, name: "Flint", kind: .local, family: .generative, size: "3B",
                      tcp: 0...0, tls: 0...0, routing: 0...0, queue: 0...4, inference: 900...1500, accuracy: 0.9),
     ]
+}
+
+/// What the user can change about an agent. Values are typical milliseconds; the race adds jitter around them.
+struct AgentTuning: Codable, Equatable, Sendable {
+    var kind: AgentKind
+    /// Model time for one decision.
+    var inference: Double
+    /// TCP + TLS + route to the data centre and back. Only paid by cloud agents.
+    var network: Double
+    /// Average wait in a queue before the model runs.
+    var queue: Double
+    /// Share of decisions that are right (0.5 is a coin toss).
+    var accuracy: Double
+
+    static let inferenceRange = 5.0...2500.0
+    static let networkRange = 20.0...1200.0
+    static let queueRange = 0.0...800.0
+    static let accuracyRange = 0.5...1.0
+
+    init(kind: AgentKind, inference: Double, network: Double, queue: Double, accuracy: Double) {
+        self.kind = kind
+        self.inference = inference
+        self.network = network
+        self.queue = queue
+        self.accuracy = accuracy
+    }
+
+    init(profile: AgentProfile) {
+        let typical = profile.typical
+        self.init(kind: profile.kind, inference: typical.inference, network: max(typical.network, Self.networkRange.lowerBound),
+                  queue: typical.queue, accuracy: profile.accuracy)
+    }
+
+    static let defaults: [AgentTuning] = AgentProfile.lineup.map(AgentTuning.init(profile:))
+
+    var clamped: AgentTuning {
+        AgentTuning(kind: kind,
+                    inference: inference.clamped(to: Self.inferenceRange),
+                    network: network.clamped(to: Self.networkRange),
+                    queue: queue.clamped(to: Self.queueRange),
+                    accuracy: accuracy.clamped(to: Self.accuracyRange))
+    }
+
+    /// Network time actually paid by this agent.
+    var effectiveNetwork: Double { kind == .cloud ? network : 0 }
+    var typicalTotal: Double { inference + effectiveNetwork + queue }
+
+    /// How many links an agent with this tuning gets through in a race, on average.
+    func expectedDecisions(duration: Double, walkTime: Double) -> Int {
+        Int(duration / (walkTime + clamped.typicalTotal / 1000))
+    }
+}
+
+extension AgentProfile {
+    /// The same agent with the user's numbers; jitter around each value keeps the race lifelike.
+    func tuned(_ tuning: AgentTuning) -> AgentProfile {
+        let t = tuning.clamped
+        let network = t.effectiveNetwork
+        func around(_ value: Double, _ spread: Double) -> ClosedRange<Double> { (value * (1 - spread))...(value * (1 + spread)) }
+        return AgentProfile(id: id, name: name, kind: t.kind, family: family, size: size,
+                            tcp: around(network * 0.12, 0.3), tls: around(network * 0.18, 0.3), routing: around(network * 0.7, 0.25),
+                            queue: around(t.queue, t.kind == .cloud ? 0.85 : 0.5), inference: around(t.inference, 0.12),
+                            accuracy: t.accuracy)
+    }
+
+    /// Same kind, latency ranges and accuracy (ids and names are fixed).
+    func sameSettings(as other: AgentProfile) -> Bool {
+        kind == other.kind && tcp == other.tcp && tls == other.tls && routing == other.routing
+            && queue == other.queue && inference == other.inference && accuracy == other.accuracy
+    }
+
+    static func lineup(tuned tunings: [AgentTuning]) -> [AgentProfile] {
+        lineup.map { profile in tunings.indices.contains(profile.id) ? profile.tuned(tunings[profile.id]) : profile }
+    }
+}
+
+extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self { min(max(self, range.lowerBound), range.upperBound) }
 }
 
 extension ClosedRange where Bound == Double {
