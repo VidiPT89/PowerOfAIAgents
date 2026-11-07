@@ -83,33 +83,48 @@ struct InsightsView: View {
         .card()
     }
 
-    private var cascade: some View {
+    @ViewBuilder private var cascade: some View {
         // The fastest local agent filters, the slowest cloud agent takes what it escalates.
-        let localAgent = profiles.filter { $0.kind == .local }.min { $0.typical.total < $1.typical.total } ?? profiles[0]
-        let cloudAgent = profiles.filter { $0.kind == .cloud }.max { $0.typical.total < $1.typical.total } ?? profiles[2]
-        let local = localAgent.typical
-        let cloud = cloudAgent.typical
-        let mixed = Cascade.averageLatency(local: local, cloud: cloud, escalation: escalation)
-        let cloudOnly = cloud.total
-        return VStack(alignment: .leading, spacing: 12) {
+        let localAgent = profiles.filter { $0.kind == .local }.min { $0.typical.total < $1.typical.total }
+        let cloudAgent = profiles.filter { $0.kind == .cloud }.max { $0.typical.total < $1.typical.total }
+        VStack(alignment: .leading, spacing: 12) {
             Text(prefs.text("Simulador de cascata", "Cascade simulator"))
                 .font(.system(.headline, design: .rounded, weight: .bold))
-            Text(prefs.text("\(localAgent.name) decide tudo localmente e só envia para \(cloudAgent.name) a percentagem de casos com pouca confiança.",
-                            "\(localAgent.name) decides everything locally and only forwards the low-confidence share to \(cloudAgent.name)."))
-                .font(.subheadline)
-                .foregroundStyle(Brand.dim(scheme))
-            HStack {
-                Text(prefs.text("Enviado para a cloud", "Sent to the cloud")).font(.caption)
-                Slider(value: $escalation, in: 0...1)
-                Text("\(Int(escalation * 100))%").font(.system(.subheadline, design: .monospaced, weight: .semibold)).frame(width: 48, alignment: .trailing)
-            }
-            HStack(spacing: 12) {
-                result(prefs.text("Só cloud", "Cloud only"), cloudOnly.milliseconds, Brand.cloud)
-                result(prefs.text("Cascata", "Cascade"), mixed.milliseconds, Brand.orange)
-                result(prefs.text("Mais rápido", "Faster"), String(format: "×%.1f", cloudOnly / max(mixed, 1)), Brand.ok)
+            if let localAgent, let cloudAgent {
+                cascadeBody(local: localAgent, cloud: cloudAgent)
+            } else {
+                Label(prefs.text("A cascata precisa de pelo menos um agente local e um na cloud. Muda o tipo de um agente no laboratório da Corrida.",
+                                 "A cascade needs at least one local and one cloud agent. Change an agent's type in the Race lab."),
+                      systemImage: "exclamationmark.triangle")
+                    .font(.subheadline)
+                    .foregroundStyle(Brand.dim(scheme))
             }
         }
         .card()
+    }
+
+    @ViewBuilder private func cascadeBody(local localAgent: AgentProfile, cloud cloudAgent: AgentProfile) -> some View {
+        let mixed = Cascade.averageLatency(local: localAgent.typical, cloud: cloudAgent.typical, escalation: escalation)
+        let cloudOnly = cloudAgent.typical.total
+        let faster = mixed <= cloudOnly
+        Text(prefs.text("\(localAgent.name) decide tudo localmente e só envia para \(cloudAgent.name) a percentagem de casos com pouca confiança.",
+                        "\(localAgent.name) decides everything locally and only forwards the low-confidence share to \(cloudAgent.name)."))
+            .font(.subheadline)
+            .foregroundStyle(Brand.dim(scheme))
+        HStack {
+            Text(prefs.text("Enviado para a cloud", "Sent to the cloud")).font(.caption)
+            Slider(value: $escalation, in: 0...1)
+            Text("\(Int(escalation * 100))%").font(.system(.subheadline, design: .monospaced, weight: .semibold)).frame(width: 48, alignment: .trailing)
+        }
+        HStack(spacing: 12) {
+            result(prefs.text("Só cloud", "Cloud only"), cloudOnly.milliseconds, Brand.cloud)
+            result(prefs.text("Cascata", "Cascade"), mixed.milliseconds, Brand.orange)
+            if faster {
+                result(prefs.text("Mais rápido", "Faster"), String(format: "×%.1f", cloudOnly / max(mixed, 1)), Brand.ok)
+            } else {
+                result(prefs.text("Mais lento", "Slower"), String(format: "×%.1f", mixed / max(cloudOnly, 1)), Brand.danger)
+            }
+        }
     }
 
     private func result(_ label: String, _ value: String, _ color: Color) -> some View {

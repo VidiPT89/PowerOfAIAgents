@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Power of AI Agents logo" width="128">
+</p>
+
 # ⚡ Power of AI Agents
 
 > Native iOS & macOS app that shows, in real time, why small local AI models can outpace cloud APIs, and how a swarm of parallel agents builds an interface layer by layer. Built with SwiftUI.
@@ -20,8 +24,9 @@
 - ✅ **Latency anatomy:** stacked bars showing where every millisecond goes (TCP, TLS, routing, queue, inference) for each agent
 - ✅ **Cascade simulator:** choose how much traffic a local model escalates to the cloud and see the resulting average latency
 - ✅ Deterministic, seedable simulation engine, separated from the UI and covered by unit tests run on every push (GitHub Actions)
+- ✅ Simulations pause when the app goes to the background, and a frame never advances more than 0.1 s, so nothing jumps ahead after a hitch
 - ✅ Privacy manifest included: no tracking, no data collected, no network access
-- ✅ Animated splash screen with credits
+- ✅ Animated splash screen with the app logo and credits
 - ✅ Runtime language switch: Português (PT-PT) and English
 - ✅ Dark mode, Light mode and System mode
 - ✅ Custom colour identity inspired by [ividi.dev](https://ividi.dev/): orange, burnt amber and near-black

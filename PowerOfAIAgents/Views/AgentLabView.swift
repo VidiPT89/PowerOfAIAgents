@@ -15,8 +15,14 @@ final class AgentLab: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        let saved = defaults.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([AgentTuning].self, from: $0) }
-        tunings = saved?.count == AgentTuning.defaults.count ? saved!.map(\.clamped) : AgentTuning.defaults
+        // Anything unreadable or from a different line-up falls back to the defaults.
+        if let data = defaults.data(forKey: Self.key),
+           let saved = try? JSONDecoder().decode([AgentTuning].self, from: data),
+           saved.count == AgentTuning.defaults.count {
+            tunings = saved.map(\.clamped)
+        } else {
+            tunings = AgentTuning.defaults
+        }
     }
 
     var profiles: [AgentProfile] { AgentProfile.lineup(tuned: tunings) }

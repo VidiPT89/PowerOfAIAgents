@@ -38,7 +38,7 @@ struct SettingsView: View {
                 }
 
                 VStack(spacing: 14) {
-                    AgentsOrbit(size: 110)
+                    LogoMark(size: 96)
                     Text("Power of AI Agents").font(.system(.headline, design: .rounded, weight: .bold))
                     Text(versionText).font(.caption.monospaced()).foregroundStyle(Brand.faint(scheme))
                     CreditsView()

@@ -9,7 +9,7 @@ final class SwarmModel: ObservableObject {
     @Published private(set) var expectedTime: Double
     let soloTime = SwarmEngine.completionTime(agentCount: 1)
     private var clock = 0.0
-    private var loop: Task<Void, Never>?
+    private let loop = FrameLoop()
 
     init() {
         engine = SwarmEngine(agentCount: 12)
@@ -24,27 +24,18 @@ final class SwarmModel: ObservableObject {
         if engine.isFinished { reset() }
         guard !running else { return }
         running = true
-        loop = Task { [weak self] in
-            var last = Date()
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(16))
-                guard let self, self.running else { return }
-                let now = Date()
-                self.clock += now.timeIntervalSince(last)
-                last = now
-                self.engine.advance(to: self.clock)
-                if self.engine.isFinished {
-                    self.running = false
-                    return
-                }
-            }
+        loop.start { [weak self] step in
+            guard let self else { return false }
+            self.clock += step
+            self.engine.advance(to: self.clock)
+            if self.engine.isFinished { self.running = false }
+            return self.running
         }
     }
 
     func pause() {
         running = false
-        loop?.cancel()
-        loop = nil
+        loop.stop()
     }
 
     func reset() {

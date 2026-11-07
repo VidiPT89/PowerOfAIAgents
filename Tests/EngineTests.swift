@@ -168,4 +168,21 @@ final class EngineTests: XCTestCase {
         }
         XCTAssertEqual(TuningScale.position(of: 0, in: AgentTuning.queueRange, logarithmic: false), 0)
     }
+
+    @MainActor
+    func testFrameStepIsCappedAfterASuspension() {
+        let last = Date(timeIntervalSince1970: 1_000)
+        XCTAssertEqual(FrameLoop.step(from: last, to: last.addingTimeInterval(0.016)), 0.016, accuracy: 1e-6)
+        XCTAssertEqual(FrameLoop.step(from: last, to: last.addingTimeInterval(300)), FrameLoop.maxStep)
+        XCTAssertEqual(FrameLoop.step(from: last, to: last.addingTimeInterval(-5)), 0)
+    }
+
+    @MainActor
+    func testLabIgnoresSavedDataFromAnotherLineUp() {
+        let defaults = UserDefaults(suiteName: "lab-test-\(UUID().uuidString)")!
+        defaults.set(try! JSONEncoder().encode([AgentTuning.defaults[0]]), forKey: "agentTunings")
+        XCTAssertEqual(AgentLab(defaults: defaults).tunings, AgentTuning.defaults)
+        defaults.set(Data("not json".utf8), forKey: "agentTunings")
+        XCTAssertEqual(AgentLab(defaults: defaults).tunings, AgentTuning.defaults)
+    }
 }

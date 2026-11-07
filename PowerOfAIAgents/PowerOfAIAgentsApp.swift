@@ -56,6 +56,7 @@ enum AppSection: String, CaseIterable, Identifiable {
 struct MainView: View {
     @EnvironmentObject private var prefs: Preferences
     @EnvironmentObject private var lab: AgentLab
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var race = RaceModel()
     @StateObject private var swarm = SwarmModel()
     @State private var section: AppSection = .race
@@ -77,6 +78,13 @@ struct MainView: View {
         }
         .onAppear { race.configure(lab.profiles) }
         .onChange(of: lab.tunings) { _, _ in race.configure(lab.profiles) }
+        .onChange(of: scenePhase) { _, phase in
+            // Leaving the app pauses both simulations instead of letting them run unseen.
+            if phase == .background {
+                race.pause()
+                swarm.pause()
+            }
+        }
         .onChange(of: section) { _, new in
             if new != .race { race.pause() }
             if new != .swarm { swarm.pause() }
