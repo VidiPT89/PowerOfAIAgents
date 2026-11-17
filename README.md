@@ -9,7 +9,7 @@
 [Report Bug](https://github.com/VidiPT89/PowerOfAIAgents/issues) · [Request Feature](https://github.com/VidiPT89/PowerOfAIAgents/issues)
 
 <p align="center">
-  <img src="docs/demo.gif" alt="PowerOfAIAgents demo: intro, agent race, tuning agents in the agent lab, the tuned race, real measurement applied to the race, agent swarm and latency anatomy on iPhone" width="320">
+  <img src="docs/demo.gif" alt="PowerOfAIAgents demo on iPhone: intro, real measurement, testing an API endpoint with a per-request chart, the on-device topic classifier with its threshold slider, the measurement history, the agent race and the agent swarm" width="320">
 </p>
 
 ## ✨ Features
