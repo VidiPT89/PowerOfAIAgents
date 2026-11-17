@@ -128,13 +128,17 @@ final class HistoryStore: ObservableObject {
         func field(_ text: String) -> String {
             text.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" }) ? "\"" + text.replacingOccurrences(of: "\"", with: "\"\"") + "\"" : text
         }
-        let rows = records.map { r in
-            [formatter.string(from: r.date), r.kind.rawValue, field(r.target), r.connection.rawValue, r.method ?? "",
-             r.samples.map(String.init) ?? "", r.failures.map(String.init) ?? "", r.status.map(String.init) ?? "",
-             number(r.totalMs), number(r.p95Ms), number(r.minMs), number(r.maxMs), number(r.jitterMs), number(r.followUpMs),
-             number(r.dnsMs), number(r.tcpMs), number(r.tlsMs), number(r.serverMs), number(r.transferMs),
-             number(r.encoderMs), number(r.encoderAccuracy), number(r.generativeMs), number(r.generativeAccuracy), r.language ?? ""]
-                .joined(separator: ",")
+        // Built in small parts: one long literal is too slow for older compilers to type-check.
+        let rows = records.map { r -> String in
+            var fields: [String] = [formatter.string(from: r.date), r.kind.rawValue, field(r.target), r.connection.rawValue, r.method ?? ""]
+            let counts: [Int?] = [r.samples, r.failures, r.status]
+            fields += counts.map { $0.map(String.init) ?? "" }
+            let numbers: [Double?] = [r.totalMs, r.p95Ms, r.minMs, r.maxMs, r.jitterMs, r.followUpMs,
+                                      r.dnsMs, r.tcpMs, r.tlsMs, r.serverMs, r.transferMs,
+                                      r.encoderMs, r.encoderAccuracy, r.generativeMs, r.generativeAccuracy]
+            fields += numbers.map(number)
+            fields.append(r.language ?? "")
+            return fields.joined(separator: ",")
         }
         return ([csvHeader] + rows).joined(separator: "\n") + "\n"
     }
