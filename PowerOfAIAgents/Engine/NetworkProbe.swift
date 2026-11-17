@@ -75,11 +75,7 @@ enum NetworkProbe {
 
     /// A fresh session with two sequential requests. The server may close the connection.
     static func measurePair() async throws -> (fresh: NetworkSample, reused: NetworkSample) {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.urlCache = nil
-        configuration.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
-        configuration.httpMaximumConnectionsPerHost = 1
-        let session = URLSession(configuration: configuration)
+        let session = makeSession()
         defer { session.finishTasksAndInvalidate() }
         let fresh = try await sample(on: session)
         let reused = try await sample(on: session)
@@ -87,19 +83,44 @@ enum NetworkProbe {
     }
 
     private static func sample(on session: URLSession) async throws -> NetworkSample {
-        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 10)
-        request.httpMethod = "HEAD"
+        let timed = try await measure(url, method: .head, on: session)
+        guard (200..<300).contains(timed.status) else { throw URLError(.badServerResponse) }
+        return timed.sample
+    }
+
+    /// One request with the system's own phase timestamps. Any HTTP status counts as an answer.
+    static func measure(_ url: URL, method: HTTPMethod, on session: URLSession) async throws -> TimedResponse {
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalAndRemoteCacheData, timeoutInterval: 15)
+        request.httpMethod = method.rawValue
         let collector = MetricsCollector()
-        let (_, response) = try await session.data(for: request, delegate: collector)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
+        let (data, response) = try await session.data(for: request, delegate: collector)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         // The metrics callback can land a moment after the response.
         for _ in 0..<20 where collector.metrics == nil { try await Task.sleep(for: .milliseconds(25)) }
         let transactions = (collector.metrics?.transactionMetrics ?? [])
             .filter { $0.resourceFetchType == .networkLoad }
             .map(NetworkSample.init)
         guard let sample = NetworkSample.combined(transactions) else { throw URLError(.cannotParseResponse) }
-        return sample
+        return TimedResponse(sample: sample, status: http.statusCode, bytes: data.count)
     }
+
+    /// A session that never answers from a cache. One connection per host, so reuse is visible.
+    static func makeSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        configuration.httpMaximumConnectionsPerHost = 1
+        return URLSession(configuration: configuration)
+    }
+}
+
+enum HTTPMethod: String, CaseIterable, Codable, Sendable { case head = "HEAD", get = "GET" }
+
+/// One timed request: where the time went, the status code and the body size.
+struct TimedResponse: Sendable, Equatable {
+    var sample: NetworkSample
+    var status: Int
+    var bytes: Int
 }
 
 private final class MetricsCollector: NSObject, URLSessionTaskDelegate, @unchecked Sendable {

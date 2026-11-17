@@ -4,7 +4,7 @@
 
 # ⚡ PowerOfAIAgents
 
-> Native iOS & macOS app that shows, in real time, why small local AI models can outpace cloud APIs, and how a swarm of parallel agents builds an interface layer by layer. Built with SwiftUI.
+> Native iOS & macOS toolkit for deciding whether an AI feature should run on the device or over the network: time your own API endpoints phase by phase, run Apple's on-device language models on your own text, keep a history of every measurement, and see the trade-offs in interactive simulations. Built with SwiftUI.
 
 [Report Bug](https://github.com/VidiPT89/PowerOfAIAgents/issues) · [Request Feature](https://github.com/VidiPT89/PowerOfAIAgents/issues)
 
@@ -13,6 +13,15 @@
 </p>
 
 ## ✨ Features
+
+**Real tools**
+
+- ✅ **Test API:** type any HTTPS address (your API, a model server, a CDN) and send 5, 10, 20 or 50 real `HEAD` or `GET` requests, with or without connection reuse. You get the median, p95, min, max, jitter, success rate and HTTP status, a request-by-request chart, and the first (cold) request split into DNS, TCP, TLS, server and transfer next to the average of the warm ones, plus a plain-language verdict
+- ✅ **Text lab:** paste your own text and run Apple's on-device NaturalLanguage tasks, each one timed: language detection with hypotheses, sentiment, people/places/organisations, word classes and keywords. **Search** ranks the sentences of the text by meaning with the system sentence embedding. **Classify** lets you define a topic and a list of terms: the word embedding decides each one (with a live threshold slider) and, with Apple Intelligence, Apple's on-device model gives its own yes/no with the time of every decision, so you can see where the two agree
+- ✅ **History:** every Measure run and endpoint test is saved on the device with the date and connection type (Wi-Fi, mobile data, wired). A chart over time per target, a summary by connection type, "versus previous" deltas, per-record phase details, delete, and CSV export
+- ✅ Connection type shown live next to every test
+
+**Interactive simulations** (in the Simulate tab, labelled as illustrative)
 
 - ✅ **Agent race:** four robotic spider agents crawl the same article and decide, link by link, whether each link is about spiders. Two run locally, two in the cloud. They all walk at the same speed, so the only difference is how long each one needs to decide
 - ✅ Live verdict boxes on the page: green for correct finds, red for false alarms, dashed for missed links
@@ -27,7 +36,7 @@
 - ✅ **Cascade simulator:** choose how much traffic a local model escalates to the cloud and see the resulting average latency
 - ✅ Deterministic, seedable simulation engine, separated from the UI and covered by unit tests run on every push (GitHub Actions)
 - ✅ Simulations pause when the app goes to the background, and a frame never advances more than 0.1 s, so nothing jumps ahead after a hitch
-- ✅ Privacy manifest included: no tracking or analytics. The only network access is the optional measurement, which sends HEAD requests to ividi.dev when you tap **Measure**. The server receives the IP address and standard connection metadata, but no article text
+- ✅ Privacy manifest included: no tracking or analytics. Network access only happens when you tap **Measure** (HEAD requests to ividi.dev) or **Test** (requests to the address you typed, straight from the device). History stays on the device
 - ✅ Animated splash screen with the app logo and credits
 - ✅ Runtime language switch: Português (PT-PT) and English
 - ✅ Dark mode, Light mode and System mode
@@ -43,7 +52,8 @@
 | Language | Swift 6 |
 | UI | SwiftUI, Canvas (iOS 17+ / macOS 14+) |
 | Text layout | Core Text |
-| Real measurement | URLSession task metrics, NaturalLanguage word embeddings, Apple Foundation Models (iOS 26 / macOS 26) |
+| Real measurement | URLSession task metrics, Network (path monitor), NaturalLanguage (tagger, word and sentence embeddings), Apple Foundation Models (iOS 26 / macOS 26) |
+| Charts | Swift Charts |
 | Testing | XCTest |
 | Project | XcodeGen |
 
@@ -79,12 +89,16 @@ Choose the `PowerOfAIAgents` scheme for iPhone/iPad or `PowerOfAIAgents-macOS` f
 
 ## 📖 Usage
 
-- **Race:** press **Start race** (or Space on the Mac). Pick a duration of 10, 20, 30 or 60 seconds. **Reset** starts a new run with a fresh seed.
+- **Test API:** type an address (or tap a recent one), choose `HEAD` or `GET`, the number of requests and whether to reuse the connection, then tap **Test**. Results are saved to History.
+- **Text:** paste a text (or tap **Example**) and choose **Analyse**, **Search** or **Classify**. Everything runs on the device; the text is not stored.
+- **History:** filter by device measurements or endpoints and by target, tap a record for its details, export everything as CSV or delete records.
+- **Settings:** open them from the gear on any screen.
+- **Race** (Simulate tab): press **Start race** (or Space on the Mac). Pick a duration of 10, 20, 30 or 60 seconds. **Reset** starts a new run with a fresh seed.
 - **Tune:** open the agent lab to change each agent. Try moving a cloud agent onto the device, or making the local encoder less accurate, and run the race again. An orange dot on **Tune** means custom values are active; **Restore all defaults** brings back the original line-up.
 - **Swarm:** choose the number of agents with the slider and press **Build**. Compare the elapsed time with the single-agent time.
 - **Measure:** tap **Measure** to time real requests to ividi.dev and the on-device models. **Use in the race** copies measured model times and accuracy into local agents with no queue, and HTTPS time into cloud agents within the lab limits (it also works when only some measurements succeed, and the measured network stays available as a lab preset after relaunching); **Share** exports the results as an image. The generative model needs Apple Intelligence and does not run in the simulator. Both models use the same small 12-term sample in the app's language (each language has its own word embedding, and hyphenated Portuguese compounds such as *aranha-lobo* are split into words); results say which language they used, and on a system without the Portuguese embedding both models measure the same English terms and the screen says why; encoder timing excludes loading the embedding. HTTPS time includes web-server work and is not a cloud-model benchmark. Race walking, jitter and the network phase split remain illustrative. Stopping, restarting or backgrounding a measurement cannot mix results from different runs.
 - **Why:** read the latency breakdown and drag the cascade slider to see how escalating only low-confidence cases changes the average latency.
-- **Settings:** switch language (PT/EN), appearance (System, Light, Dark) and whether the intro is shown on launch.
+- **Settings:** switch language (PT/EN), appearance (System, Light, Dark), whether the intro is shown on launch, and delete the saved history.
 
 ## 🧪 Testing
 
@@ -93,7 +107,7 @@ xcodebuild -project PowerOfAIAgents.xcodeproj -scheme PowerOfAIAgents-macOS -des
 xcodebuild -project PowerOfAIAgents.xcodeproj -scheme PowerOfAIAgents -destination 'generic/platform=iOS Simulator' build
 ```
 
-The unit tests cover the race engine (determinism regardless of frame rate, verdict counters, local versus cloud throughput), the cascade maths, the swarm engine (every layer built exactly once, more agents finishing faster, prediction equal to a frame-by-frame run), the agent lab (tuning, clamping, saving, the log-scale sliders and the decision estimate), the real measurement (network timestamps split per phase, redirects keeping their handshake, the on-device encoder in both languages, cancellation and restart isolation, partial failures (including applying model results with no network), the saved measured-network preset, matched model samples in the chosen language, applying measured accuracy, and the share image), the network presets, the article parser and text layout (every link placed, punctuation kept next to its link) and the parity of links between the Portuguese and English articles. The same checks run on GitHub Actions for every push.
+The unit tests cover the endpoint tester (address normalisation, cold versus warm requests with and without connection reuse, failures counted while the test carries on), latency statistics (nearest-rank p95, jitter), the history store (saving and reloading, the record limit, "versus previous", CSV quoting), the text lab (language, sentences and per-task timing, sentiment without a model, the topic classifier and its language choice), the race engine (determinism regardless of frame rate, verdict counters, local versus cloud throughput), the cascade maths, the swarm engine (every layer built exactly once, more agents finishing faster, prediction equal to a frame-by-frame run), the agent lab (tuning, clamping, saving, the log-scale sliders and the decision estimate), the real measurement (network timestamps split per phase, redirects keeping their handshake, the on-device encoder in both languages, cancellation and restart isolation, partial failures (including applying model results with no network), the saved measured-network preset, matched model samples in the chosen language, applying measured accuracy, and the share image), the network presets, the article parser and text layout (every link placed, punctuation kept next to its link) and the parity of links between the Portuguese and English articles. The same checks run on GitHub Actions for every push.
 
 ## 🔒 Privacy
 

@@ -32,6 +32,8 @@ final class MeasureModel: ObservableObject {
     /// The app's language had no word embedding on this system, so the measurement used English.
     @Published private(set) var fellBackToEnglish = false
     private var job: Task<Void, Never>?
+    /// Called when a full run ends with at least one result, so the history can keep it.
+    var onFinish: ((HistoryRecord) -> Void)?
     private let network: () async throws -> (fresh: NetworkSample, reused: NetworkSample)
     private let encode: ([ArticleLink], AppLanguage) async -> ModelRun?
     private let generate: (String, AppLanguage) async throws -> Bool
@@ -80,9 +82,10 @@ final class MeasureModel: ObservableObject {
             await self?.measureEncoder()
             guard !Task.isCancelled else { return }
             if self?.availability() == nil { await self?.measureGenerative() }
-            guard !Task.isCancelled else { return }
-            self?.running = nil
-            self?.job = nil
+            guard !Task.isCancelled, let self else { return }
+            self.running = nil
+            self.job = nil
+            if let record = self.record() { self.onFinish?(record) }
         }
     }
 
@@ -147,6 +150,18 @@ final class MeasureModel: ObservableObject {
             }
         }
         generative = ModelRun(decisions: links.count, correct: correct, totalMilliseconds: total)
+    }
+
+    /// The current results as a history record (the connection type is filled in by the caller).
+    func record(date: Date = Date()) -> HistoryRecord? {
+        guard hasResults else { return nil }
+        return HistoryRecord(date: date, kind: .device, target: NetworkProbe.url.host() ?? "ividi.dev",
+                             totalMs: fresh?.total, followUpMs: reused?.total,
+                             dnsMs: fresh?.dns, tcpMs: fresh?.tcp, tlsMs: fresh?.tls, serverMs: fresh?.server, transferMs: fresh?.transfer,
+                             samples: fresh == nil ? nil : networkSampleCount,
+                             encoderMs: encoder?.averageMilliseconds, encoderAccuracy: encoder?.accuracy,
+                             generativeMs: generative?.averageMilliseconds, generativeAccuracy: generative?.accuracy,
+                             language: sampleLanguage.rawValue)
     }
 
     /// Puts the measured numbers into the agent lab: the race then uses this device's real figures.

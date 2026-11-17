@@ -1,15 +1,38 @@
 import SwiftUI
 
+/// Settings in a sheet, opened from the gear on every screen.
+struct SettingsSheet: View {
+    @EnvironmentObject private var prefs: Preferences
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            SettingsView()
+                .navigationTitle(prefs.text("Definições", "Settings"))
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.inline)
+                #endif
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(prefs.text("OK", "Done")) { dismiss() }
+                    }
+                }
+        }
+        #if os(macOS)
+        .frame(minWidth: 520, minHeight: 620)
+        #endif
+    }
+}
+
 struct SettingsView: View {
     @EnvironmentObject private var prefs: Preferences
+    @EnvironmentObject private var history: HistoryStore
     @Environment(\.colorScheme) private var scheme
+    @State private var confirmClear = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                ScreenHeader(eyebrow: "PowerOfAIAgents",
-                             title: prefs.text("Definições", "Settings"),
-                             subtitle: prefs.text("Idioma, aparência e arranque.", "Language, appearance and launch."))
 
                 group(prefs.text("Idioma", "Language"), symbol: "globe") {
                     Picker(prefs.text("Idioma", "Language"), selection: $prefs.language) {
@@ -37,6 +60,16 @@ struct SettingsView: View {
                         .tint(Brand.orange)
                 }
 
+                group(prefs.text("Dados", "Data"), symbol: "externaldrive") {
+                    Text(prefs.text("\(history.records.count) medições guardadas só neste aparelho.", "\(history.records.count) measurements stored on this device only."))
+                        .font(.subheadline)
+                    Button(role: .destructive) { confirmClear = true } label: {
+                        Label(prefs.text("Apagar histórico", "Delete history"), systemImage: "trash")
+                    }
+                    .disabled(history.records.isEmpty)
+                    .tint(Brand.danger)
+                }
+
                 VStack(spacing: 14) {
                     LogoMark(size: 96)
                     Text("PowerOfAIAgents").font(.system(.headline, design: .rounded, weight: .bold))
@@ -56,6 +89,10 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Brand.background(scheme).ignoresSafeArea())
+        .confirmationDialog(prefs.text("Apagar todo o histórico?", "Delete all history?"), isPresented: $confirmClear, titleVisibility: .visible) {
+            Button(prefs.text("Apagar tudo", "Delete all"), role: .destructive) { history.clear() }
+            Button(prefs.text("Cancelar", "Cancel"), role: .cancel) {}
+        }
     }
 
     static let privacyURL = URL(string: "https://github.com/VidiPT89/PowerOfAIAgents/blob/main/PRIVACY.md")!
@@ -72,6 +109,7 @@ struct SettingsView: View {
                 .foregroundStyle(Brand.accent(scheme))
             content()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .card()
     }
 }
